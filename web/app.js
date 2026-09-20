@@ -72,6 +72,7 @@ function showCard(data) {
   document.getElementById("quality").textContent = data.best_quality;
 
   customMode.setInfo(data);
+  sectionMode.setInfo(data);
   show(card);
   if (presets.length) { show(chooser); }
 }
@@ -139,10 +140,11 @@ function applyMode() {
   const custom = customMode.isOpen();
   chooser.classList.toggle("custom-on", custom);
   const preset = presets.find((item) => item.id === selectedPreset);
+  const range = sectionMode.isOn() ? "Only the section" : "Full video";
   if (custom) {
-    modeNote.textContent = "Download will use your custom options above.";
+    modeNote.textContent = `Download will use your custom options above · ${range}`;
   } else {
-    modeNote.textContent = preset ? `Download will use: ${preset.name}` : "";
+    modeNote.textContent = preset ? `Download will use: ${preset.name} · ${range}` : "";
   }
   // The preset's own warning only matters while that preset is in use.
   if (!custom && preset && preset.warning) {
@@ -260,6 +262,12 @@ function showDone(job) {
   const where = document.createElement("small");
   where.textContent = `In the folder: ${job.folder}`;
   jobDone.appendChild(where);
+  if (job.section) {
+    const times = document.createElement("small");
+    times.textContent = `Section: ${sectionMode.clock(job.section.padded_start)} to ${sectionMode.clock(job.section.padded_end)} `
+      + `(you asked for ${sectionMode.clock(job.section.start)} to ${sectionMode.clock(job.section.end)}, plus the extra seconds on each side)`;
+    jobDone.appendChild(times);
+  }
   show(jobDone);
 }
 
@@ -305,20 +313,25 @@ async function startDownload() {
     showError("Please check a link first.", "");
     return;
   }
+  const range = sectionMode.read();
+  if (range.error) {
+    showError(range.error, "");
+    return;
+  }
   setRunning(true);
   hide(jobDone);
   jobStatus.textContent = "Starting...";
   setBar(0);
   show(jobBox);
+  const request = useCustom
+    ? { url: checkedUrl, custom: customMode.getSelection() }
+    : { url: checkedUrl, preset: selectedPreset };
+  if (range.section) { request.section = range.section; }
   try {
     const response = await fetch("/api/download", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        useCustom
-          ? { url: checkedUrl, custom: customMode.getSelection() }
-          : { url: checkedUrl, preset: selectedPreset }
-      ),
+      body: JSON.stringify(request),
     });
     const data = await response.json();
     if (!response.ok) {
@@ -349,4 +362,5 @@ linkInput.addEventListener("keydown", (event) => {
 });
 
 customMode.onModeChange(applyMode);
+sectionMode.onChange(applyMode);
 loadPresets();

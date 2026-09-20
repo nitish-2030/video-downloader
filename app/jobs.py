@@ -22,7 +22,7 @@ def _update(job_id, **changes):
         _jobs[job_id].update(changes)
 
 
-def _run(job_id, url, preset):
+def _run(job_id, url, preset, section):
     with _run_lock:
         _update(job_id, status="downloading")
 
@@ -37,7 +37,8 @@ def _run(job_id, url, preset):
             )
 
         try:
-            result = run_preset(url, preset, str(DOWNLOAD_DIR), on_progress=on_progress)
+            times = (section["padded_start"], section["padded_end"]) if section else None
+            result = run_preset(url, preset, str(DOWNLOAD_DIR), on_progress=on_progress, section=times)
             _update(
                 job_id,
                 status="done",
@@ -56,10 +57,12 @@ def _run(job_id, url, preset):
                            "details": str(error)})
 
 
-def start_job(url, preset):
+def start_job(url, preset, section=None):
     """Starts a download in the background and returns its job id right away.
 
     preset: a preset id like "premiere", or a ready preset dictionary (the Custom section).
+    section: None for the whole video, or the plan from plan_section()
+             (start, end, padded_start, padded_end in seconds).
     """
     choice = resolve_preset(preset)  # raises KeyError for an unknown preset id
     job_id = uuid.uuid4().hex[:8]
@@ -68,6 +71,7 @@ def start_job(url, preset):
             "id": job_id,
             "url": url,
             "preset": preset if isinstance(preset, str) else "custom",
+            "section": section,   # None = whole video
             "content": choice["content"],   # video_audio | video_only | audio_only (the page uses it for wording)
             "status": "queued",   # queued | downloading | converting | done | error
             "percent": 0.0,
@@ -77,7 +81,7 @@ def start_job(url, preset):
             "folder": None,
             "error": None,
         }
-    threading.Thread(target=_run, args=(job_id, url, preset), daemon=True).start()
+    threading.Thread(target=_run, args=(job_id, url, preset, section), daemon=True).start()
     return job_id
 
 

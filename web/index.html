@@ -57,6 +57,24 @@
         <p id="c-warning" class="warning hidden"></p>
       </div>
 
+      <fieldset id="timeline" class="timeline">
+        <legend>How much of the video?</legend>
+        <label class="choice"><input type="radio" name="range" value="full" checked> Full video</label>
+        <label class="choice"><input type="radio" name="range" value="section"> Only a section</label>
+        <div id="section-fields" class="section-fields hidden">
+          <label>Start
+            <input id="s-start" type="text" placeholder="0:00" autocomplete="off" spellcheck="false">
+          </label>
+          <label>End
+            <input id="s-end" type="text" placeholder="1:45" autocomplete="off" spellcheck="false">
+          </label>
+          <label class="wide">Extra seconds on each side
+            <input id="s-extra" type="number" min="0" step="0.5" value="2">
+          </label>
+          <p class="hint wide">Write times like 1:20, 1:02:30 or 80 (seconds). The extra seconds give you room to trim in your editor. <span id="s-length"></span></p>
+        </div>
+      </fieldset>
+
       <p id="mode-note" class="mode-note"></p>
       <button id="download" type="button">Download</button>
     </section>
@@ -70,6 +88,7 @@
     <p class="note">Only download footage you have the right to use. This is a private tool that runs on your own computer.</p>
   </main>
   <script src="custom.js"></script>
+  <script src="section.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

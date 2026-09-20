@@ -222,6 +222,13 @@ def _make_progress_hook(on_progress):
     return hook
 
 
+def _time_tag(seconds):
+    """Turns seconds into text that is safe in a file name: 78.0 -> '78', 78.5 -> '78p5'."""
+    if abs(seconds - round(seconds)) < 0.05:
+        return str(int(round(seconds)))
+    return f"{seconds:.1f}".replace(".", "p")
+
+
 def download(url, preset_id, output_dir, on_progress=None, section=None):
     """Downloads a video (no conversion yet). Returns the path of the saved file.
 
@@ -246,7 +253,8 @@ def download(url, preset_id, output_dir, on_progress=None, section=None):
     if quality:
         name += "_" + quality_label(quality)
     if section:
-        name += "_section"
+        # The times go into the name too, so two sections of one video never overwrite each other.
+        name += f"_section_{_time_tag(section[0])}-{_time_tag(section[1])}"
     options = {
         "quiet": True,
         "no_warnings": True,
