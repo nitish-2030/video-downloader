@@ -79,3 +79,24 @@ input[type="radio"]:focus { outline: 2px solid #3b6cf6; outline-offset: 2px; }
 .section-fields .wide { grid-column: 1 / -1; }
 .section-fields .hint { margin: 0; }
 @media (max-width: 560px) { .section-fields { grid-template-columns: 1fr; } }
+
+button.small { padding: 6px 12px; font-size: 13px; }
+.queue { margin-top: 28px; }
+.queue-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.queue-head h3 { margin: 0; font-size: 16px; }
+.queue-notice { margin: 0 0 10px; padding: 8px 12px; background: #fff7e0; border: 1px solid #f0d78a; border-radius: 8px; color: #6b4e00; font-size: 14px; }
+.queue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.qrow { background: #fff; border: 1px solid #dfe2e6; border-radius: 12px; padding: 12px 14px; }
+.qtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.qtitle { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qbuttons { display: flex; gap: 6px; flex: none; }
+.qmeta { margin-top: 2px; font-size: 13px; color: #5b6068; }
+.qstatus { margin: 8px 0 6px; font-size: 14px; }
+.qrow.done .qstatus { color: #17663a; font-weight: 600; }
+.qrow.error { border-color: #f3b8b8; background: #fffafa; }
+.qrow.error .qstatus { color: #8a1f1f; }
+.qrow.canceled .qstatus { color: #5b6068; }
+.qrow.canceled, .qrow.queued { background: #fafbfc; }
+.qdone { margin-top: 8px; font-size: 14px; color: #17663a; font-weight: 600; word-break: break-word; }
+.qdone small { display: block; margin-top: 2px; font-weight: 400; color: #5b6068; }
+.qerror pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 6px 0 0; color: #5b2222; }

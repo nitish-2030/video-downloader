@@ -11,17 +11,11 @@ const chooser = document.getElementById("chooser");
 const presetList = document.getElementById("preset-list");
 const presetWarning = document.getElementById("preset-warning");
 const downloadButton = document.getElementById("download");
-const jobBox = document.getElementById("job");
-const jobStatus = document.getElementById("job-status");
-const jobDone = document.getElementById("job-done");
 const modeNote = document.getElementById("mode-note");
-const bar = document.getElementById("bar");
-const barFill = document.getElementById("bar-fill");
 
 let presets = [];
 let selectedPreset = null;
 let checkedUrl = null;      // the link that was checked (what Download will use)
-let jobRunning = false;
 
 function show(element) { element.classList.remove("hidden"); }
 function hide(element) { element.classList.add("hidden"); }
@@ -34,17 +28,6 @@ function formatDuration(seconds) {
   const secs = total % 60;
   const pad = (n) => String(n).padStart(2, "0");
   return hours ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
-}
-
-function formatSpeed(bytesPerSecond) {
-  if (!bytesPerSecond) return "";
-  const mb = bytesPerSecond / (1024 * 1024);
-  return mb >= 1 ? `${mb.toFixed(1)} MB/s` : `${Math.round(bytesPerSecond / 1024)} KB/s`;
-}
-
-function formatEta(seconds) {
-  if (seconds === null || seconds === undefined) return "";
-  return seconds < 60 ? `${Math.round(seconds)} s left` : `${formatDuration(seconds)} left`;
 }
 
 function showError(friendly, details) {
@@ -153,7 +136,7 @@ function applyMode() {
   } else {
     hide(presetWarning);
   }
-  if (!jobRunning) { downloadButton.textContent = downloadLabel(); }
+  downloadButton.textContent = downloadLabel();
 }
 
 function renderPresets(defaultId) {
@@ -188,126 +171,13 @@ async function loadPresets() {
   }
 }
 
-// ---------- Download job ----------
+// ---------- Adding a download to the queue ----------
 
-function setRunning(running) {
-  jobRunning = running;
-  downloadButton.disabled = running;
-  downloadButton.textContent = running ? "Downloading..." : downloadLabel();
-}
-
-function setBar(percent) {
-  if (percent === null || percent === undefined) {
-    bar.classList.add("indeterminate");
-    barFill.style.width = "";
-  } else {
-    bar.classList.remove("indeterminate");
-    barFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
-  }
-}
-
-// "audio" for the Audio only preset, "video" for everything else (used in the wording).
-function kindOf(job) {
-  if (job.content) { return job.content === "audio_only" ? "audio" : "video"; }
-  const preset = presets.find((item) => item.id === job.preset);
-  return preset && preset.content === "audio_only" ? "audio" : "video";
-}
-
-// Downloads can come in parts (video, then audio), and each part counts from 0 again.
-// The tracker notices that, so the bar restarts cleanly and is labelled "part 2".
-function renderJob(job, tracker) {
-  const percent = job.percent;
-  const kind = kindOf(job);
-
-  if (job.status === "queued") {
-    jobStatus.textContent = "Waiting for the previous download to finish...";
-    setBar(0);
-    return;
-  }
-
-  if (tracker.stage !== job.status) {
-    tracker.stage = job.status;
-    tracker.shown = 0;
-    tracker.part = 1;
-  } else if (job.status === "downloading" && percent !== null && percent < tracker.shown - 30) {
-    tracker.part += 1;
-    tracker.shown = 0;
-  }
-  if (percent !== null) { tracker.shown = Math.max(tracker.shown, percent); }
-  const barValue = percent === null ? null : tracker.shown;
-  const percentText = barValue === null ? "" : ` ${Math.round(barValue)}%`;
-  const extras = [formatSpeed(job.speed), formatEta(job.eta)].filter(Boolean).join(" · ");
-
-  if (job.status === "downloading") {
-    if (tracker.part === 1 && !job.speed && (barValue === null || barValue === 0)) {
-      jobStatus.textContent = `Getting the ${kind} ready...`;
-      setBar(null);
-    } else {
-      const part = tracker.part > 1 ? ` (part ${tracker.part})` : "";
-      jobStatus.textContent = `Downloading${part}${percentText}${extras ? " · " + extras : ""}`;
-      setBar(barValue);
-    }
-  } else if (job.status === "converting") {
-    const what = kind === "audio" ? "Converting audio..." : "Converting for editing...";
-    jobStatus.textContent = `${what}${percentText}`;
-    setBar(barValue);
-  }
-}
-
-function showDone(job) {
-  jobStatus.textContent = "Finished";
-  setBar(100);
-  jobDone.textContent = "";
-  jobDone.append(`Saved as ${job.file}`);
-  const where = document.createElement("small");
-  where.textContent = `In the folder: ${job.folder}`;
-  jobDone.appendChild(where);
-  if (job.section) {
-    const times = document.createElement("small");
-    times.textContent = `Section: ${sectionMode.clock(job.section.padded_start)} to ${sectionMode.clock(job.section.padded_end)} `
-      + `(you asked for ${sectionMode.clock(job.section.start)} to ${sectionMode.clock(job.section.end)}, plus the extra seconds on each side)`;
-    jobDone.appendChild(times);
-  }
-  show(jobDone);
-}
-
-async function pollJob(jobId) {
-  const tracker = { stage: null, shown: 0, part: 1 };
-  let failures = 0;
-  while (true) {
-    try {
-      const response = await fetch(`/api/jobs/${jobId}`);
-      const data = await response.json();
-      if (!response.ok) {
-        const detail = data.detail || {};
-        showError(detail.friendly || "Something went wrong. Please try again.", detail.details || "");
-        hide(jobBox);
-        return;
-      }
-      failures = 0;
-      if (data.status === "done") { showDone(data); return; }
-      if (data.status === "error") {
-        const problem = data.error || {};
-        showError(problem.friendly || "The download failed.", problem.details || "");
-        hide(jobBox);
-        return;
-      }
-      renderJob(data, tracker);
-    } catch (error) {
-      failures += 1;
-      if (failures >= 3) {
-        showError("I lost contact with the tool. Is it still running?", String(error));
-        hide(jobBox);
-        return;
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-}
+let sending = false;   // true while the request to add a download is on its way
 
 async function startDownload() {
   hide(errorBox);
-  if (jobRunning) return;
+  if (sending) return;
   const useCustom = customMode.isOpen();
   if (!checkedUrl || (!useCustom && !selectedPreset)) {
     showError("Please check a link first.", "");
@@ -318,15 +188,13 @@ async function startDownload() {
     showError(range.error, "");
     return;
   }
-  setRunning(true);
-  hide(jobDone);
-  jobStatus.textContent = "Starting...";
-  setBar(0);
-  show(jobBox);
   const request = useCustom
     ? { url: checkedUrl, custom: customMode.getSelection() }
     : { url: checkedUrl, preset: selectedPreset };
   if (range.section) { request.section = range.section; }
+
+  sending = true;
+  downloadButton.disabled = true;
   try {
     const response = await fetch("/api/download", {
       method: "POST",
@@ -337,15 +205,15 @@ async function startDownload() {
     if (!response.ok) {
       const detail = data.detail || {};
       showError(detail.friendly || "Something went wrong. Please try again.", detail.details || "");
-      hide(jobBox);
       return;
     }
-    await pollJob(data.job_id);
+    await queueView.refreshNow();   // the new download shows up in the list right away
+    queueView.reveal();
   } catch (error) {
     showError("I couldn't reach the tool. Is it still running?", String(error));
-    hide(jobBox);
   } finally {
-    setRunning(false);
+    sending = false;
+    downloadButton.disabled = false;
   }
 }
 
@@ -363,4 +231,5 @@ linkInput.addEventListener("keydown", (event) => {
 
 customMode.onModeChange(applyMode);
 sectionMode.onChange(applyMode);
+queueView.start({ onError: showError });
 loadPresets();

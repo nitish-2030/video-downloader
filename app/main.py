@@ -1,6 +1,7 @@
 """main.py - the local server. It only listens on this computer (127.0.0.1)."""
 
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -8,11 +9,18 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .engine import QUALITY_STEPS, EngineError, detect_platform, get_info, plan_section
-from .jobs import get_job, start_job
+from .jobs import (cancel_job, clean_leftovers, clear_finished, get_job, list_jobs, remove_job,
+                   retry_job, start_job)
 from .presets import (AUDIO_FORMATS, CONTENT_CHOICES, DEFAULT_PRESET, PRESETS, VIDEO_FORMATS,
                       build_custom_preset)
 
-app = FastAPI(title="Video Downloader for Editors")
+@asynccontextmanager
+async def lifespan(app):
+    clean_leftovers()   # half-made files from a crash or Ctrl+C are thrown away at start
+    yield
+
+
+app = FastAPI(title="Video Downloader for Editors", lifespan=lifespan)
 
 
 class InfoRequest(BaseModel):
@@ -160,7 +168,50 @@ def download(request: DownloadRequest):
         choice = request.preset
 
     plan = _plan_for(url, request.section) if request.section is not None else None
-    return {"job_id": start_job(url, choice, plan)}
+    title = (_known_info(url) or {}).get("title")
+    return {"job_id": start_job(url, choice, plan, title)}
+
+
+@app.get("/api/jobs")
+def jobs_list():
+    """The whole queue, oldest first."""
+    return {"jobs": list_jobs()}
+
+
+@app.post("/api/jobs/clear-finished")
+def jobs_clear_finished():
+    """Removes finished and canceled jobs from the list (failed ones stay so they can be retried)."""
+    return {"removed": clear_finished()}
+
+
+def _job_action(action, job_id):
+    """Runs cancel / retry / remove and turns the outcomes into friendly errors."""
+    try:
+        result = action(job_id)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail={"friendly": str(error), "details": job_id})
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"friendly": "I can't find that download.", "details": job_id},
+        )
+    return result
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+def jobs_cancel(job_id: str):
+    return _job_action(cancel_job, job_id)
+
+
+@app.post("/api/jobs/{job_id}/retry")
+def jobs_retry(job_id: str):
+    return _job_action(retry_job, job_id)
+
+
+@app.delete("/api/jobs/{job_id}")
+def jobs_remove(job_id: str):
+    _job_action(remove_job, job_id)
+    return {"removed": 1}
 
 
 @app.get("/api/jobs/{job_id}")

@@ -79,16 +79,20 @@
       <button id="download" type="button">Download</button>
     </section>
 
-    <section id="job" class="job hidden">
-      <p id="job-status"></p>
-      <div id="bar" class="bar"><div id="bar-fill" class="bar-fill"></div></div>
-      <p id="job-done" class="job-done hidden"></p>
+    <section id="queue" class="queue hidden">
+      <div class="queue-head">
+        <h3>Downloads</h3>
+        <button id="clear-finished" type="button" class="link-button hidden">Clear finished</button>
+      </div>
+      <p id="queue-notice" class="queue-notice hidden"></p>
+      <ul id="queue-list" class="queue-list"></ul>
     </section>
 
     <p class="note">Only download footage you have the right to use. This is a private tool that runs on your own computer.</p>
   </main>
   <script src="custom.js"></script>
   <script src="section.js"></script>
+  <script src="queue.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

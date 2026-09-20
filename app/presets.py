@@ -106,6 +106,17 @@ def resolve_preset(preset):
     return get_preset(preset)
 
 
+def _quality_text(quality):
+    """2160 -> '4K', 720 -> '720p', None -> 'Best quality'."""
+    if not quality:
+        return "Best quality"
+    if quality >= 4320:
+        return "8K"
+    if quality >= 2160:
+        return "4K"
+    return f"{quality}p"
+
+
 def build_custom_preset(content, quality=None, video_format="premiere", audio_format="wav"):
     """Turns the choices from the Custom section into a preset-shaped dictionary.
 
@@ -119,7 +130,8 @@ def build_custom_preset(content, quality=None, video_format="premiere", audio_fo
         if audio_format not in AUDIO_FORMATS:
             raise ValueError(f"Unknown audio type: {audio_format}")
         return {"name": "Custom", "content": content, "treatment": None,
-                "audio_format": audio_format, "warning": None, "quality": None, "label": None}
+                "audio_format": audio_format, "warning": None, "quality": None, "label": None,
+                "summary": f"Custom: {CONTENT_CHOICES[content]} · {audio_format.upper()}"}
 
     if video_format not in VIDEO_FORMATS:
         raise ValueError(f"Unknown format: {video_format}")
@@ -129,4 +141,6 @@ def build_custom_preset(content, quality=None, video_format="premiere", audio_fo
         label = "broll" if video_format == "premiere" else f"{video_format}_nosound"
     return {"name": "Custom", "content": content, "treatment": video_format,
             "audio_format": None, "warning": VIDEO_FORMATS[video_format]["warning"],
-            "quality": quality, "label": label}
+            "quality": quality, "label": label,
+            "summary": f"Custom: {CONTENT_CHOICES[content]} · {_quality_text(quality)} · "
+                       f"{PRESETS[video_format]['name']}"}
