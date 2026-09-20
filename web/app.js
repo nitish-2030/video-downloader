@@ -14,6 +14,7 @@ const downloadButton = document.getElementById("download");
 const jobBox = document.getElementById("job");
 const jobStatus = document.getElementById("job-status");
 const jobDone = document.getElementById("job-done");
+const modeNote = document.getElementById("mode-note");
 const bar = document.getElementById("bar");
 const barFill = document.getElementById("bar-fill");
 
@@ -70,7 +71,7 @@ function showCard(data) {
   document.getElementById("duration").textContent = data.is_live ? "Live" : formatDuration(data.duration);
   document.getElementById("quality").textContent = data.best_quality;
 
-    customMode.setInfo(data);
+  customMode.setInfo(data);
   show(card);
   if (presets.length) { show(chooser); }
 }
@@ -126,13 +127,31 @@ function selectPreset(presetId) {
     button.classList.toggle("selected", isSelected);
     button.setAttribute("aria-pressed", String(isSelected));
   }
-  const preset = presets.find((item) => item.id === presetId);
-  if (preset && preset.warning) {
+  applyMode();
+}
+
+// Which way will Download work: with the selected quick preset, or with the custom options?
+function downloadLabel() {
+  return customMode.isOpen() ? "Download with custom options" : "Download";
+}
+
+function applyMode() {
+  const custom = customMode.isOpen();
+  chooser.classList.toggle("custom-on", custom);
+  const preset = presets.find((item) => item.id === selectedPreset);
+  if (custom) {
+    modeNote.textContent = "Download will use your custom options above.";
+  } else {
+    modeNote.textContent = preset ? `Download will use: ${preset.name}` : "";
+  }
+  // The preset's own warning only matters while that preset is in use.
+  if (!custom && preset && preset.warning) {
     presetWarning.textContent = preset.warning;
     show(presetWarning);
   } else {
     hide(presetWarning);
   }
+  if (!jobRunning) { downloadButton.textContent = downloadLabel(); }
 }
 
 function renderPresets(defaultId) {
@@ -147,7 +166,7 @@ function renderPresets(defaultId) {
     const description = document.createElement("span");
     description.textContent = preset.description;
     button.append(name, description);
-    button.addEventListener("click", () => selectPreset(preset.id));
+    button.addEventListener("click", () => { customMode.close(); selectPreset(preset.id); });
     presetList.appendChild(button);
   }
   selectPreset(defaultId);
@@ -172,7 +191,7 @@ async function loadPresets() {
 function setRunning(running) {
   jobRunning = running;
   downloadButton.disabled = running;
-  downloadButton.textContent = running ? "Downloading..." : "Download";
+  downloadButton.textContent = running ? "Downloading..." : downloadLabel();
 }
 
 function setBar(percent) {
@@ -187,6 +206,7 @@ function setBar(percent) {
 
 // "audio" for the Audio only preset, "video" for everything else (used in the wording).
 function kindOf(job) {
+  if (job.content) { return job.content === "audio_only" ? "audio" : "video"; }
   const preset = presets.find((item) => item.id === job.preset);
   return preset && preset.content === "audio_only" ? "audio" : "video";
 }
@@ -280,7 +300,8 @@ async function pollJob(jobId) {
 async function startDownload() {
   hide(errorBox);
   if (jobRunning) return;
-  if (!checkedUrl || !selectedPreset) {
+  const useCustom = customMode.isOpen();
+  if (!checkedUrl || (!useCustom && !selectedPreset)) {
     showError("Please check a link first.", "");
     return;
   }
@@ -293,7 +314,11 @@ async function startDownload() {
     const response = await fetch("/api/download", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: checkedUrl, preset: selectedPreset }),
+      body: JSON.stringify(
+        useCustom
+          ? { url: checkedUrl, custom: customMode.getSelection() }
+          : { url: checkedUrl, preset: selectedPreset }
+      ),
     });
     const data = await response.json();
     if (!response.ok) {
@@ -323,4 +348,5 @@ linkInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") checkLink();
 });
 
+customMode.onModeChange(applyMode);
 loadPresets();

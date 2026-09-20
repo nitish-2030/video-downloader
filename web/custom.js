@@ -14,6 +14,7 @@ const customMode = (() => {
 
   let formats = [];       // video formats from /api/presets (with their warnings)
   let qualityOptions = []; // from /api/info for the checked link
+  let modeListener = null; // app.js is told when the panel opens or closes
 
   function fillSelect(select, entries) {
     const before = select.value;
@@ -71,7 +72,7 @@ const customMode = (() => {
     update();
   }
 
-  // What the editor picked (Download will use this in the next step).
+  // What the editor picked (Download uses this while the custom panel is open).
   function getSelection() {
     return {
       content: contentSelect.value,
@@ -81,14 +82,27 @@ const customMode = (() => {
     };
   }
 
-  toggle.addEventListener("click", () => {
-    const opening = panel.classList.contains("hidden");
-    setVisible(panel, opening);
-    toggle.textContent = opening ? "Hide custom options" : "Show custom options";
-  });
+  function isOpen() {
+    return !panel.classList.contains("hidden");
+  }
+
+  function setOpen(open) {
+    setVisible(panel, open);
+    toggle.textContent = open ? "Hide custom options" : "Show custom options";
+    if (modeListener) { modeListener(open); }
+  }
+
+  toggle.addEventListener("click", () => setOpen(!isOpen()));
   for (const select of [contentSelect, qualitySelect, formatSelect, audioSelect]) {
     select.addEventListener("change", update);
   }
 
-  return { setChoices, setInfo, getSelection };
+  return {
+    setChoices,
+    setInfo,
+    getSelection,
+    isOpen,                                   // true while the custom panel is open (Download uses it)
+    close: () => { if (isOpen()) { setOpen(false); } },
+    onModeChange: (listener) => { modeListener = listener; },
+  };
 })();
