@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video Downloader</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>Video Downloader</h1>
+    <p class="subtitle">Paste a YouTube or X link to get started.</p>
+
+    <div class="link-row">
+      <input id="link" type="text" placeholder="Paste a link here" autocomplete="off" spellcheck="false">
+      <button id="paste" type="button" class="secondary">Paste</button>
+      <button id="check" type="button">Check link</button>
+    </div>
+
+    <div id="loading" class="loading hidden">Looking up your video...</div>
+
+    <div id="error" class="error hidden">
+      <p id="error-message"></p>
+      <button id="details-toggle" type="button" class="link-button hidden">Show details</button>
+      <pre id="error-details" class="hidden"></pre>
+    </div>
+
+    <div id="card" class="card hidden">
+      <img id="thumb" alt="Video thumbnail">
+      <div class="card-text">
+        <h2 id="title"></h2>
+        <p id="uploader"></p>
+        <p class="meta"><span id="platform"></span> &middot; <span id="duration"></span> &middot; <span id="quality"></span></p>
+      </div>
+    </div>
+
+    <section id="chooser" class="chooser hidden">
+      <h3>What do you need?</h3>
+      <div id="preset-list" class="preset-list"></div>
+      <p id="preset-warning" class="warning hidden"></p>
+      <button id="download" type="button">Download</button>
+    </section>
+
+    <section id="job" class="job hidden">
+      <p id="job-status"></p>
+      <div id="bar" class="bar"><div id="bar-fill" class="bar-fill"></div></div>
+      <p id="job-done" class="job-done hidden"></p>
+    </section>
+
+    <p class="note">Only download footage you have the right to use. This is a private tool that runs on your own computer.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
