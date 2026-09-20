@@ -6,9 +6,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .engine import EngineError, detect_platform, get_info
+from .engine import QUALITY_STEPS, EngineError, detect_platform, get_info
 from .jobs import get_job, start_job
-from .presets import AUDIO_FORMATS, CONTENT_CHOICES, DEFAULT_PRESET, PRESETS, VIDEO_FORMATS
+from .presets import (AUDIO_FORMATS, CONTENT_CHOICES, DEFAULT_PRESET, PRESETS, VIDEO_FORMATS,
+                      build_custom_preset)
 
 app = FastAPI(title="Video Downloader for Editors")
 
@@ -17,9 +18,18 @@ class InfoRequest(BaseModel):
     url: str
 
 
+class CustomOptions(BaseModel):
+    """The choices from the Custom section of the page."""
+    content: str                    # video_audio | video_only | audio_only
+    quality: int | None = None      # short side in pixels, None = best available
+    format: str = "premiere"        # premiere | after_effects | original
+    audio_format: str = "wav"       # wav | mp3
+
+
 class DownloadRequest(BaseModel):
     url: str
     preset: str = DEFAULT_PRESET
+    custom: CustomOptions | None = None   # if given, it is used instead of "preset"
 
 
 @app.get("/api/health")
@@ -72,7 +82,7 @@ def info(request: InfoRequest):
 
 @app.post("/api/download")
 def download(request: DownloadRequest):
-    """Starts a download in the background. Returns a job id to check progress with."""
+    """Starts a download in the background (a quick preset, or the Custom choices). Returns a job id."""
     url = request.url.strip()
     if not url:
         raise HTTPException(
@@ -85,6 +95,18 @@ def download(request: DownloadRequest):
             detail={"friendly": "This link isn't supported. Please use a YouTube or X link.",
                     "details": ""},
         )
+    if request.custom is not None:
+        custom = request.custom
+        try:
+            if custom.quality is not None and custom.quality not in QUALITY_STEPS:
+                raise ValueError(f"Unknown quality: {custom.quality}")
+            choice = build_custom_preset(custom.content, custom.quality, custom.format, custom.audio_format)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=400,
+                detail={"friendly": "That option isn't available.", "details": str(error)},
+            )
+        return {"job_id": start_job(url, choice)}
     if request.preset not in PRESETS:
         raise HTTPException(
             status_code=400,

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .engine import EngineError
 from .pipeline import run_preset
+from .presets import resolve_preset
 
 # Temporary fixed folder. Phase 7 adds the output-folder setting.
 DOWNLOAD_DIR = Path(__file__).resolve().parent.parent / "downloads"
@@ -21,7 +22,7 @@ def _update(job_id, **changes):
         _jobs[job_id].update(changes)
 
 
-def _run(job_id, url, preset_id):
+def _run(job_id, url, preset):
     with _run_lock:
         _update(job_id, status="downloading")
 
@@ -36,7 +37,7 @@ def _run(job_id, url, preset_id):
             )
 
         try:
-            result = run_preset(url, preset_id, str(DOWNLOAD_DIR), on_progress=on_progress)
+            result = run_preset(url, preset, str(DOWNLOAD_DIR), on_progress=on_progress)
             _update(
                 job_id,
                 status="done",
@@ -55,14 +56,19 @@ def _run(job_id, url, preset_id):
                            "details": str(error)})
 
 
-def start_job(url, preset_id):
-    """Starts a download in the background and returns its job id right away."""
+def start_job(url, preset):
+    """Starts a download in the background and returns its job id right away.
+
+    preset: a preset id like "premiere", or a ready preset dictionary (the Custom section).
+    """
+    choice = resolve_preset(preset)  # raises KeyError for an unknown preset id
     job_id = uuid.uuid4().hex[:8]
     with _jobs_lock:
         _jobs[job_id] = {
             "id": job_id,
             "url": url,
-            "preset": preset_id,
+            "preset": preset if isinstance(preset, str) else "custom",
+            "content": choice["content"],   # video_audio | video_only | audio_only (the page uses it for wording)
             "status": "queued",   # queued | downloading | converting | done | error
             "percent": 0.0,
             "speed": None,
@@ -71,7 +77,7 @@ def start_job(url, preset_id):
             "folder": None,
             "error": None,
         }
-    threading.Thread(target=_run, args=(job_id, url, preset_id), daemon=True).start()
+    threading.Thread(target=_run, args=(job_id, url, preset), daemon=True).start()
     return job_id
 
 
