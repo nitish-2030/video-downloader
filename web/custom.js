@@ -44,7 +44,7 @@ const customMode = (() => {
       const chosen = qualitySelect.value === ""
         ? qualityOptions[0]
         : qualityOptions.find((option) => String(option.value) === qualitySelect.value);
-      if (chosen) { result = `Expected picture size: ${chosen.result}`; }
+      if (chosen && chosen.result) { result = `Expected picture size: ${chosen.result}`; }
     }
     resultLine.textContent = result;
     setVisible(resultLine, result !== "");

@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .engine import QUALITY_STEPS, EngineError, detect_platform, get_info, plan_section
+from .engine import QUALITY_STEPS, EngineError, detect_platform, get_info, plan_section, quality_label
 from .jobs import (cancel_job, clean_leftovers, clear_finished, get_job, list_jobs, remove_job,
                    retry_job, start_job)
 from .presets import (AUDIO_FORMATS, CONTENT_CHOICES, DEFAULT_PRESET, PRESETS, VIDEO_FORMATS,
@@ -105,6 +105,7 @@ def presets():
         "audio_formats": [
             {"id": key, "label": value["label"]} for key, value in AUDIO_FORMATS.items()
         ],
+        "quality_steps": [{"value": step, "label": quality_label(step)} for step in QUALITY_STEPS],
         "content_choices": [{"id": key, "label": label} for key, label in CONTENT_CHOICES.items()],
         "video_formats": [
             {"id": key, "label": value["label"], "warning": value["warning"]}

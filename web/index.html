@@ -9,13 +9,19 @@
 <body>
   <main>
     <h1>Video Downloader</h1>
-    <p class="subtitle">Paste a YouTube or X link to get started.</p>
+    <p class="subtitle">Paste a YouTube or X link (or several, one per line) to get started.</p>
 
     <div class="link-row">
-      <input id="link" type="text" placeholder="Paste a link here" autocomplete="off" spellcheck="false">
+      <textarea id="link" rows="1" placeholder="Paste a link here (or many links, one per line)" autocomplete="off" spellcheck="false"></textarea>
       <button id="paste" type="button" class="secondary">Paste</button>
       <button id="check" type="button">Check link</button>
     </div>
+
+    <section id="batch" class="batch hidden">
+      <p id="batch-summary" class="batch-summary"></p>
+      <ul id="batch-list" class="batch-list"></ul>
+    </section>
+    <p id="batch-note" class="batch-note hidden"></p>
 
     <div id="loading" class="loading hidden">Looking up your video...</div>
 
