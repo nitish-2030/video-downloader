@@ -37,7 +37,26 @@
     <section id="chooser" class="chooser hidden">
       <h3>What do you need?</h3>
       <div id="preset-list" class="preset-list"></div>
-      <p id="preset-warning" class="warning hidden"></p>
+            <p id="preset-warning" class="warning hidden"></p>
+
+      <button id="custom-toggle" type="button" class="link-button custom-toggle">Show custom options</button>
+      <div id="custom-panel" class="custom hidden">
+        <label>What do you need
+          <select id="c-content"></select>
+        </label>
+        <label id="c-quality-row">Quality
+          <select id="c-quality"></select>
+        </label>
+        <p id="c-result" class="hint hidden"></p>
+        <label id="c-format-row">Format
+          <select id="c-format"></select>
+        </label>
+        <label id="c-audio-row" class="hidden">Audio type
+          <select id="c-audio"></select>
+        </label>
+        <p id="c-warning" class="warning hidden"></p>
+      </div>
+
       <button id="download" type="button">Download</button>
     </section>
 
@@ -49,6 +68,7 @@
 
     <p class="note">Only download footage you have the right to use. This is a private tool that runs on your own computer.</p>
   </main>
+  <script src="custom.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -55,3 +55,11 @@ button.preset span { font-size: 13px; color: #5b6068; line-height: 1.35; }
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 .job-done { margin: 12px 0 0 !important; color: #17663a; font-weight: 600; word-break: break-word; }
 .job-done small { display: block; margin-top: 4px; font-weight: 400; color: #5b6068; }
+
+
+.custom-toggle { display: block; margin-top: 14px; }
+.custom { margin-top: 10px; display: grid; gap: 12px; background: #fff; border: 1px solid #dfe2e6; border-radius: 12px; padding: 14px 16px; }
+.custom label { display: grid; gap: 4px; font-size: 14px; font-weight: 600; }
+.custom select { padding: 10px 12px; font-size: 15px; font-weight: 400; border: 1px solid #c8ccd2; border-radius: 8px; background: #fff; color: #1b1d21; }
+.custom select:focus { outline: 2px solid #3b6cf6; border-color: #3b6cf6; }
+.hint { margin: -4px 0 0; font-size: 13px; color: #5b6068; }

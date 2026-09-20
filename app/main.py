@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from .engine import EngineError, detect_platform, get_info
 from .jobs import get_job, start_job
-from .presets import AUDIO_FORMATS, DEFAULT_PRESET, PRESETS
+from .presets import AUDIO_FORMATS, CONTENT_CHOICES, DEFAULT_PRESET, PRESETS, VIDEO_FORMATS
 
 app = FastAPI(title="Video Downloader for Editors")
 
@@ -44,6 +44,11 @@ def presets():
         ],
         "audio_formats": [
             {"id": key, "label": value["label"]} for key, value in AUDIO_FORMATS.items()
+        ],
+        "content_choices": [{"id": key, "label": label} for key, label in CONTENT_CHOICES.items()],
+        "video_formats": [
+            {"id": key, "label": value["label"], "warning": value["warning"]}
+            for key, value in VIDEO_FORMATS.items()
         ],
     }
 

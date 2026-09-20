@@ -53,6 +53,47 @@ def short_side(fmt):
     return min(width, height) if width else height
 
 
+# The standard sizes shown in the quality dropdown (the "short side" of the picture, biggest first).
+QUALITY_STEPS = [4320, 2160, 1440, 1080, 720, 480, 360, 240, 144]
+
+
+def build_quality_options(sizes):
+    """Turns the real picture sizes of a video into a clean list for the quality dropdown.
+
+    sizes: list of (width, height); width may be None if the site doesn't say.
+    Each option is a ceiling: choosing it gets the best size that is not bigger than it.
+    Odd sizes (like 1080x608) don't get their own entry, they sit under the standard step above them.
+    Returns [{"value": 1080, "label": "1080p", "result": "1920x1080"}, ...], biggest first.
+    """
+    entries = []
+    for width, height in set(sizes):
+        if height:
+            entries.append((min(width, height) if width else height, width or 0, height))
+    if not entries:
+        return []
+
+    best_side = max(entry[0] for entry in entries)
+    top = min((step for step in QUALITY_STEPS if step >= best_side), default=QUALITY_STEPS[0])
+
+    options, seen = [], set()
+    for step in reversed(QUALITY_STEPS):          # smallest step first, so a size keeps its closest label
+        if step > top:
+            continue
+        fits = [entry for entry in entries if entry[0] <= step]
+        if not fits:
+            continue
+        side, width, height = max(fits)            # the biggest size that still fits under this step
+        if (width, height) in seen:
+            continue
+        seen.add((width, height))
+        options.append({
+            "value": step,
+            "label": quality_label(step),
+            "result": f"{width}x{height}" if width else f"{height}p",
+        })
+    return list(reversed(options))
+
+
 def get_info(url):
     """Fetches video info without downloading anything."""
     url = url.strip()
@@ -72,14 +113,13 @@ def get_info(url):
     except DownloadError as error:
         raise EngineError("Couldn't read this video.", str(error)) from error
 
-    sides = set()
+    sizes = []
     for fmt in info.get("formats", []):
         if fmt.get("vcodec") == "none" or fmt.get("ext") == "mhtml":
             continue
-        side = short_side(fmt)
-        if side:
-            sides.add(side)
-    qualities = sorted(sides, reverse=True)
+        if fmt.get("height"):
+            sizes.append((fmt.get("width"), fmt["height"]))
+    quality_options = build_quality_options(sizes)
 
     return {
         "platform": platform,
@@ -90,8 +130,8 @@ def get_info(url):
         "duration": info.get("duration"),
         "thumbnail": info.get("thumbnail"),
         "is_live": bool(info.get("is_live")),
-        "qualities": qualities,
-        "best_quality": ("Up to " + quality_label(qualities[0])) if qualities else "Unknown",
+        "quality_options": quality_options,
+        "best_quality": ("Up to " + quality_options[0]["label"]) if quality_options else "Unknown",
     }
 
 

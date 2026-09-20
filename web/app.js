@@ -69,6 +69,8 @@ function showCard(data) {
   document.getElementById("platform").textContent = data.platform === "x" ? "X" : "YouTube";
   document.getElementById("duration").textContent = data.is_live ? "Live" : formatDuration(data.duration);
   document.getElementById("quality").textContent = data.best_quality;
+
+    customMode.setInfo(data);
   show(card);
   if (presets.length) { show(chooser); }
 }
@@ -158,6 +160,7 @@ async function loadPresets() {
     const data = await response.json();
     presets = data.presets;
     renderPresets(data.default);
+    customMode.setChoices(data);
     if (!card.classList.contains("hidden")) { show(chooser); }
   } catch (error) {
     showError("I couldn't load the download options. Is the tool still running?", String(error));

@@ -76,6 +76,22 @@ AUDIO_FORMATS = {
 }
 
 
+
+# Choices for the Custom section of the page (labels are plain words for the editor).
+CONTENT_CHOICES = {
+    "video_audio": "Video with sound",
+    "video_only": "Video only (no sound)",
+    "audio_only": "Sound only",
+}
+
+# "id" is a key of CONVERSIONS, or "original" (no conversion).
+VIDEO_FORMATS = {
+    "premiere": {"label": "Premiere ready (MP4)", "warning": None},
+    "after_effects": {"label": "After Effects ready (MOV, large files)",
+                      "warning": PRESETS["after_effects"]["warning"]},
+    "original": {"label": "Original (untouched)", "warning": None},
+}
+
 def get_preset(preset_id):
     """Returns one preset, or raises a clear error if the id is unknown."""
     if preset_id not in PRESETS:
