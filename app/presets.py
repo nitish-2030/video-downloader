@@ -27,6 +27,7 @@ PRESETS = {
         "treatment": "premiere",
         "audio_format": None,
         "warning": None,
+        "label": "broll",
     },
     "audio": {
         "name": "Audio only",
@@ -66,7 +67,6 @@ CONVERSIONS = {
     },
 }
 
-# Audio-only choices. "quality" is passed to yt-dlp (None = not needed).
 # Audio-only choices. Our own ffmpeg step makes these files (so the page can show real progress).
 AUDIO_FORMATS = {
     "wav": {"label": "WAV (best for editing)", "extension": "wav",
@@ -97,3 +97,36 @@ def get_preset(preset_id):
     if preset_id not in PRESETS:
         raise KeyError(f"Unknown preset: {preset_id}")
     return PRESETS[preset_id]
+
+
+def resolve_preset(preset):
+    """Accepts a preset id (text) or a ready-made preset dictionary (custom choices)."""
+    if isinstance(preset, dict):
+        return preset
+    return get_preset(preset)
+
+
+def build_custom_preset(content, quality=None, video_format="premiere", audio_format="wav"):
+    """Turns the choices from the Custom section into a preset-shaped dictionary.
+
+    Raises ValueError for a choice that doesn't exist. Extra keys used by the download:
+    "quality" (short side in pixels, None = best available) and "label" (extra word in the file name).
+    """
+    if content not in CONTENT_CHOICES:
+        raise ValueError(f"Unknown content choice: {content}")
+
+    if content == "audio_only":
+        if audio_format not in AUDIO_FORMATS:
+            raise ValueError(f"Unknown audio type: {audio_format}")
+        return {"name": "Custom", "content": content, "treatment": None,
+                "audio_format": audio_format, "warning": None, "quality": None, "label": None}
+
+    if video_format not in VIDEO_FORMATS:
+        raise ValueError(f"Unknown format: {video_format}")
+    label = None
+    if content == "video_only":
+        # Keeps a no-sound file from overwriting the with-sound file of the same kind.
+        label = "broll" if video_format == "premiere" else f"{video_format}_nosound"
+    return {"name": "Custom", "content": content, "treatment": video_format,
+            "audio_format": None, "warning": VIDEO_FORMATS[video_format]["warning"],
+            "quality": quality, "label": label}

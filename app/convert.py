@@ -117,14 +117,39 @@ def _run_ffmpeg(command, duration, on_progress, output_path, failure_message):
         on_progress({"status": "converting", "percent": 100.0, "speed": None, "eta": None})
 
 
-def convert(input_path, treatment, output_dir=None, on_progress=None, drop_audio=False):
+def _strip_audio(input_path, output_dir, on_progress):
+    """'Original' without sound: copies the picture into a new file, no sound, no re-encoding."""
+    media = probe_media(input_path)
+    if not media["video"]:
+        raise EngineError("This file has no picture.")
+
+    folder = output_dir or os.path.dirname(os.path.abspath(input_path))
+    os.makedirs(folder, exist_ok=True)
+    stem, extension = os.path.splitext(os.path.basename(input_path))
+    output_path = os.path.join(folder, f"{stem}_nosound{extension}")
+    command = [
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-nostdin",
+        "-progress", "pipe:1", "-nostats",
+        "-i", input_path,
+        "-map", "0:v:0", "-c:v", "copy", "-an",
+        output_path,
+    ]
+    _run_ffmpeg(command, media["duration"], on_progress, output_path, "Removing the sound failed.")
+    return output_path
+
+
+def convert(input_path, treatment, output_dir=None, on_progress=None, drop_audio=False, label=None):
     """Converts a downloaded file. Returns the path of the result.
 
     treatment: 'premiere', 'after_effects', 'original' or None.
-    'original' and None return the input untouched.
+    'original' and None keep the file as it is (only the sound is removed if drop_audio is True).
+    label: the word added to the file name (default: the treatment). B-roll passes 'broll' so it
+    never overwrites the Premiere file.
     """
     if treatment in (None, "original"):
-        return input_path
+        if not drop_audio:
+            return input_path
+        return _strip_audio(input_path, output_dir, on_progress)
     if treatment not in CONVERSIONS:
         raise EngineError("This conversion isn't available.", f"Unknown treatment: {treatment}")
 
@@ -137,7 +162,7 @@ def convert(input_path, treatment, output_dir=None, on_progress=None, drop_audio
     folder = output_dir or os.path.dirname(os.path.abspath(input_path))
     os.makedirs(folder, exist_ok=True)
     stem = os.path.splitext(os.path.basename(input_path))[0]
-    output_path = os.path.join(folder, f"{stem}_{treatment}.{conv['extension']}")
+    output_path = os.path.join(folder, f"{stem}_{label or treatment}.{conv['extension']}")
     if os.path.abspath(output_path) == os.path.abspath(input_path):
         raise EngineError("The converted file would overwrite the original.")
 

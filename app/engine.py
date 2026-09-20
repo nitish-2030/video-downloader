@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import yt_dlp
 from yt_dlp.utils import DownloadError, download_range_func
 
-from .presets import get_preset
+from .presets import resolve_preset
 
 
 class EngineError(Exception):
@@ -225,23 +225,35 @@ def _make_progress_hook(on_progress):
 def download(url, preset_id, output_dir, on_progress=None, section=None):
     """Downloads a video (no conversion yet). Returns the path of the saved file.
 
+    preset_id: a preset id like "premiere", or a ready preset dictionary (the Custom section).
     section: None for the whole video, or (start_seconds, end_seconds).
     """
     url = url.strip()
     if detect_platform(url) is None:
         raise EngineError("This link isn't supported. Please use a YouTube or X link.")
 
-    preset = get_preset(preset_id)
-    os.makedirs(output_dir, exist_ok=True)
+    preset = resolve_preset(preset_id)
+    quality = preset.get("quality")   # short side in pixels (Custom section), None = best available
 
-    name = "%(id)s_section" if section else "%(id)s"
+    # The raw download goes into a "_working" sub-folder, so it can never overwrite (or delete)
+    # a finished file of the same video. Only "Original with sound" keeps the raw file as the result.
+    keeps_raw_file = preset["content"] == "video_audio" and preset["treatment"] == "original"
+    work_dir = output_dir if keeps_raw_file else os.path.join(output_dir, "_working")
+    os.makedirs(work_dir, exist_ok=True)
+
+    # The quality goes into the file name so two qualities of one video never overwrite each other.
+    name = "%(id)s"
+    if quality:
+        name += "_" + quality_label(quality)
+    if section:
+        name += "_section"
     options = {
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
         "noplaylist": True,
         "overwrites": True,
-        "outtmpl": os.path.join(output_dir, name + ".%(ext)s"),
+        "outtmpl": os.path.join(work_dir, name + ".%(ext)s"),
         "merge_output_format": "mkv",
     }
     if on_progress:
@@ -258,6 +270,10 @@ def download(url, preset_id, output_dir, on_progress=None, section=None):
     elif content == "audio_only":
         # Only the sound is downloaded. Our own ffmpeg step (convert_audio) turns it into WAV/MP3.
         options["format"] = "ba/b"
+
+    if quality and content != "audio_only":
+        # "res" is the short side of the picture. res:720 means: the best picture up to 720, not bigger.
+        options["format_sort"] = [f"res:{quality}"]
 
     try:
         with yt_dlp.YoutubeDL(options) as ydl:
