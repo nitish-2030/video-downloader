@@ -4,7 +4,7 @@ import os
 from urllib.parse import urlparse
 
 import yt_dlp
-from yt_dlp.utils import DownloadError, download_range_func
+from yt_dlp.utils import DownloadCancelled, DownloadError, download_range_func
 
 from .presets import resolve_preset
 
@@ -16,6 +16,10 @@ class EngineError(Exception):
         super().__init__(friendly)
         self.friendly = friendly
         self.details = details
+
+
+class Canceled(DownloadCancelled):
+    """The user pressed Cancel. Not an error: the job just stops and its half-made files are removed."""
 
 
 def detect_platform(url):
@@ -201,10 +205,18 @@ def plan_section(start_text, end_text, extra_seconds, duration):
 
 # ---------- Downloading ----------
 
-def _make_progress_hook(on_progress):
-    """Wraps yt-dlp's progress into a simple dict a queue can use later."""
+def _make_progress_hook(on_progress, cancel=None):
+    """Wraps yt-dlp's progress into a simple dict a queue can use later.
+
+    If the cancel flag is set, the next progress message stops the download (by raising Canceled).
+    """
 
     def hook(d):
+        if cancel is not None and cancel.is_set():
+            raise Canceled()
+        if not on_progress:
+            return
+        title = (d.get("info_dict") or {}).get("title")
         status = d.get("status")
         if status == "downloading":
             total = d.get("total_bytes") or d.get("total_bytes_estimate")
@@ -215,9 +227,11 @@ def _make_progress_hook(on_progress):
                 "percent": percent,
                 "speed": d.get("speed"),
                 "eta": d.get("eta"),
+                "title": title,
             })
         elif status == "finished":
-            on_progress({"status": "finished", "percent": 100.0, "speed": None, "eta": None})
+            on_progress({"status": "finished", "percent": 100.0, "speed": None, "eta": None,
+                         "title": title})
 
     return hook
 
@@ -229,11 +243,15 @@ def _time_tag(seconds):
     return f"{seconds:.1f}".replace(".", "p")
 
 
-def download(url, preset_id, output_dir, on_progress=None, section=None):
+def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=None, work_dir=None):
     """Downloads a video (no conversion yet). Returns the path of the saved file.
+
+    The raw download goes into work_dir (default: a "_working" folder inside output_dir), never straight
+    into the output folder, so half-made files can always be thrown away. run_preset() moves and cleans up.
 
     preset_id: a preset id like "premiere", or a ready preset dictionary (the Custom section).
     section: None for the whole video, or (start_seconds, end_seconds).
+    cancel: an Event; when it is set the download stops and Canceled is raised.
     """
     url = url.strip()
     if detect_platform(url) is None:
@@ -242,10 +260,7 @@ def download(url, preset_id, output_dir, on_progress=None, section=None):
     preset = resolve_preset(preset_id)
     quality = preset.get("quality")   # short side in pixels (Custom section), None = best available
 
-    # The raw download goes into a "_working" sub-folder, so it can never overwrite (or delete)
-    # a finished file of the same video. Only "Original with sound" keeps the raw file as the result.
-    keeps_raw_file = preset["content"] == "video_audio" and preset["treatment"] == "original"
-    work_dir = output_dir if keeps_raw_file else os.path.join(output_dir, "_working")
+    work_dir = work_dir or os.path.join(output_dir, "_working")
     os.makedirs(work_dir, exist_ok=True)
 
     # The quality goes into the file name so two qualities of one video never overwrite each other.
@@ -264,8 +279,8 @@ def download(url, preset_id, output_dir, on_progress=None, section=None):
         "outtmpl": os.path.join(work_dir, name + ".%(ext)s"),
         "merge_output_format": "mkv",
     }
-    if on_progress:
-        options["progress_hooks"] = [_make_progress_hook(on_progress)]
+    if on_progress or cancel is not None:
+        options["progress_hooks"] = [_make_progress_hook(on_progress, cancel)]
     if section:
         options["download_ranges"] = download_range_func([], [section])
         options["force_keyframes_at_cuts"] = True
@@ -286,9 +301,13 @@ def download(url, preset_id, output_dir, on_progress=None, section=None):
     try:
         with yt_dlp.YoutubeDL(options) as ydl:
             info = ydl.extract_info(url, download=True)
+            if cancel is not None and cancel.is_set():
+                raise Canceled()
             downloads = info.get("requested_downloads") or []
             if downloads and downloads[0].get("filepath"):
                 return downloads[0]["filepath"]
             return ydl.prepare_filename(info)
     except DownloadError as error:
+        if cancel is not None and cancel.is_set():
+            raise Canceled() from error   # the cancel stopped a helper program, so yt-dlp complained
         raise EngineError("The download failed.", str(error)) from error

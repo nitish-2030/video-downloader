@@ -3,8 +3,9 @@
 import json
 import os
 import subprocess
+import threading
 
-from .engine import EngineError
+from .engine import Canceled, EngineError
 from .presets import AUDIO_FORMATS, CONVERSIONS
 
 _PROGRESS_KEYS = {
@@ -82,8 +83,8 @@ def _build_command(input_path, output_path, conv, copy_only, drop_audio):
     return command
 
 
-def _run_ffmpeg(command, duration, on_progress, output_path, failure_message):
-    """Runs ffmpeg, reports progress while it works, removes the half-made file if it fails."""
+def _run_ffmpeg(command, duration, on_progress, output_path, failure_message, cancel=None):
+    """Runs ffmpeg, reports progress while it works, removes the half-made file if it fails or is canceled."""
     try:
         process = subprocess.Popen(
             command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -92,21 +93,39 @@ def _run_ffmpeg(command, duration, on_progress, output_path, failure_message):
         raise EngineError("A required tool (ffmpeg) was not found on this computer.",
                           str(error)) from error
 
+    finished = threading.Event()
+    if cancel is not None:
+        def watch():
+            # Checks the cancel flag a few times per second and stops ffmpeg, even if it is silent.
+            while not finished.wait(0.2):
+                if cancel.is_set():
+                    process.terminate()
+                    return
+        threading.Thread(target=watch, daemon=True).start()
+
     log_tail = []
-    for line in process.stdout:
-        line = line.strip()
-        key, _, value = line.partition("=")
-        if key in _PROGRESS_KEYS:
-            if key == "out_time" and on_progress and duration:
-                seconds = _seconds_from_stamp(value)
-                if seconds is not None:
-                    percent = max(0.0, min(99.0, seconds / duration * 100))
-                    on_progress({"status": "converting", "percent": percent,
-                                 "speed": None, "eta": None})
-        elif line:
-            log_tail.append(line)
-            log_tail = log_tail[-15:]
-    process.wait()
+    try:
+        for line in process.stdout:
+            line = line.strip()
+            key, _, value = line.partition("=")
+            if key in _PROGRESS_KEYS:
+                if key == "out_time" and on_progress and duration:
+                    seconds = _seconds_from_stamp(value)
+                    if seconds is not None:
+                        percent = max(0.0, min(99.0, seconds / duration * 100))
+                        on_progress({"status": "converting", "percent": percent,
+                                     "speed": None, "eta": None})
+            elif line:
+                log_tail.append(line)
+                log_tail = log_tail[-15:]
+        process.wait()
+    finally:
+        finished.set()
+
+    if cancel is not None and cancel.is_set():
+        if os.path.exists(output_path):
+            os.remove(output_path)
+        raise Canceled()
 
     if process.returncode != 0:
         if os.path.exists(output_path):
@@ -117,7 +136,7 @@ def _run_ffmpeg(command, duration, on_progress, output_path, failure_message):
         on_progress({"status": "converting", "percent": 100.0, "speed": None, "eta": None})
 
 
-def _strip_audio(input_path, output_dir, on_progress):
+def _strip_audio(input_path, output_dir, on_progress, cancel=None):
     """'Original' without sound: copies the picture into a new file, no sound, no re-encoding."""
     media = probe_media(input_path)
     if not media["video"]:
@@ -134,11 +153,11 @@ def _strip_audio(input_path, output_dir, on_progress):
         "-map", "0:v:0", "-c:v", "copy", "-an",
         output_path,
     ]
-    _run_ffmpeg(command, media["duration"], on_progress, output_path, "Removing the sound failed.")
+    _run_ffmpeg(command, media["duration"], on_progress, output_path, "Removing the sound failed.", cancel)
     return output_path
 
 
-def convert(input_path, treatment, output_dir=None, on_progress=None, drop_audio=False, label=None):
+def convert(input_path, treatment, output_dir=None, on_progress=None, drop_audio=False, label=None, cancel=None):
     """Converts a downloaded file. Returns the path of the result.
 
     treatment: 'premiere', 'after_effects', 'original' or None.
@@ -149,7 +168,7 @@ def convert(input_path, treatment, output_dir=None, on_progress=None, drop_audio
     if treatment in (None, "original"):
         if not drop_audio:
             return input_path
-        return _strip_audio(input_path, output_dir, on_progress)
+        return _strip_audio(input_path, output_dir, on_progress, cancel)
     if treatment not in CONVERSIONS:
         raise EngineError("This conversion isn't available.", f"Unknown treatment: {treatment}")
 
@@ -167,11 +186,11 @@ def convert(input_path, treatment, output_dir=None, on_progress=None, drop_audio
         raise EngineError("The converted file would overwrite the original.")
 
     command = _build_command(input_path, output_path, conv, copy_only, drop_audio)
-    _run_ffmpeg(command, media["duration"], on_progress, output_path, "Converting the video failed.")
+    _run_ffmpeg(command, media["duration"], on_progress, output_path, "Converting the video failed.", cancel)
     return output_path
 
 
-def convert_audio(input_path, audio_format, output_dir=None, on_progress=None):
+def convert_audio(input_path, audio_format, output_dir=None, on_progress=None, cancel=None):
     """Turns a downloaded file into a WAV or MP3 (only the sound). Returns the new file's path."""
     if audio_format not in AUDIO_FORMATS:
         raise EngineError("This audio type isn't available.", f"Unknown audio format: {audio_format}")
@@ -194,5 +213,5 @@ def convert_audio(input_path, audio_format, output_dir=None, on_progress=None):
         "-i", input_path,
         "-vn", "-map", "0:a:0",
     ] + fmt["audio_args"] + [output_path]
-    _run_ffmpeg(command, media["duration"], on_progress, output_path, "Converting the audio failed.")
+    _run_ffmpeg(command, media["duration"], on_progress, output_path, "Converting the audio failed.", cancel)
     return output_path
