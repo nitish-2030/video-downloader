@@ -13,6 +13,8 @@ from .jobs import (cancel_job, clean_leftovers, clear_finished, get_job, list_jo
                    retry_job, start_job)
 from .presets import (AUDIO_FORMATS, CONTENT_CHOICES, DEFAULT_PRESET, PRESETS, VIDEO_FORMATS,
                       build_custom_preset)
+from .settings import (MAX_EXTRA_SECONDS, MAX_PARALLEL_ALLOWED, MIN_PARALLEL, SettingsError,
+                       get_settings, update_settings)
 
 @asynccontextmanager
 async def lifespan(app):
@@ -40,6 +42,14 @@ class SectionOptions(BaseModel):
     start: str
     end: str
     extra: float = 2                # extra seconds on each side, so the editor has room to trim
+
+
+class SettingsUpdate(BaseModel):
+    """Only the settings that changed are sent; the rest stay as they are."""
+    output_folder: str | None = None
+    default_preset: str | None = None
+    extra_seconds: float | None = None
+    parallel_downloads: int | None = None
 
 
 class DownloadRequest(BaseModel):
@@ -85,6 +95,26 @@ def _plan_for(url, section):
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/settings")
+def settings_get():
+    """The editor's settings, plus the limits the page should respect."""
+    return {
+        "settings": get_settings(),
+        "limits": {"min_parallel": MIN_PARALLEL, "max_parallel": MAX_PARALLEL_ALLOWED,
+                   "max_extra_seconds": MAX_EXTRA_SECONDS},
+    }
+
+
+@app.put("/api/settings")
+def settings_put(request: SettingsUpdate):
+    """Saves the settings that were sent. A bad value saves nothing and gives a friendly message."""
+    try:
+        return {"settings": update_settings(request.model_dump(exclude_none=True))}
+    except SettingsError as error:
+        raise HTTPException(status_code=400,
+                            detail={"friendly": error.friendly, "details": error.details})
 
 
 @app.get("/api/presets")
