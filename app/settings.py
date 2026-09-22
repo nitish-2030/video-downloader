@@ -23,7 +23,6 @@ MIN_PARALLEL, MAX_PARALLEL_ALLOWED = 1, 4
 MAX_EXTRA_SECONDS = 60
 MAX_FOLDER_LENGTH = 120    # leaves room for Platform\date\title\variant inside Windows' 260-character path limit
 
-
 class SettingsError(Exception):
     """A setting that can't be used. 'friendly' is for the page, 'details' for Show details."""
 
@@ -39,6 +38,8 @@ def default_settings():
         "default_preset": "premiere",
         "extra_seconds": 2,
         "parallel_downloads": 1,
+        "cookies_file": "",   # path to an exported cookies.txt - needed for age-restricted /
+                               # members-only / private videos; empty means "don't sign in"
     }
 
 
@@ -100,11 +101,26 @@ def _check_parallel(value):
     return number
 
 
+def _check_cookies_file(value):
+    text = str(value or "").strip().strip('"')
+    if not text:
+        return ""   # empty is fine - it just means "don't use a cookies file"
+    path = Path(os.path.expandvars(os.path.expanduser(text)))
+    if not path.is_file():
+        raise SettingsError(
+            "That cookies file can't be found. Check the path (see 'How do I get this?' above "
+            "for how to export one) and try again.",
+            str(path),
+        )
+    return str(path)
+
+
 _CHECKS = {
     "output_folder": _check_output_folder,
     "default_preset": _check_default_preset,
     "extra_seconds": _check_extra_seconds,
     "parallel_downloads": _check_parallel,
+    "cookies_file": _check_cookies_file,
 }
 
 

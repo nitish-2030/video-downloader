@@ -105,7 +105,7 @@ def _run(job_id):
         _update(job_id, status="canceled", speed=None, eta=None)
     except EngineError as error:
         _update(job_id, status="error", speed=None, eta=None,
-                error={"friendly": error.friendly, "details": error.details})
+                error={"friendly": error.friendly, "details": error.details, "action": error.action})
     except Exception as error:
         _update(job_id, status="error", speed=None, eta=None,
                 error={"friendly": "Something went wrong. Please try again.",

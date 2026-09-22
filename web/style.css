@@ -63,6 +63,13 @@ button.preset span { font-size: 13px; color: #5b6068; line-height: 1.35; }
 .custom select { padding: 10px 12px; font-size: 15px; font-weight: 400; border: 1px solid #c8ccd2; border-radius: 8px; background: #fff; color: #1b1d21; }
 .custom select:focus { outline: 2px solid #3b6cf6; border-color: #3b6cf6; }
 .hint { margin: -4px 0 0; font-size: 13px; color: #5b6068; }
+.hint-box { margin: 6px 0 0; padding: 10px 12px; background: #f4f6fb; border: 1px solid #dde3ef; border-radius: 8px; font-size: 13px; color: #3a3f47; }
+.hint-box ol { margin: 0 0 6px; padding-left: 20px; }
+.hint-box li { margin-bottom: 4px; }
+.hint-box code { background: #e7ecf5; padding: 1px 4px; border-radius: 4px; }
+.hint-box .hint { margin-top: 6px; }
+#st-cookies-section.highlight { animation: st-highlight 1.6s ease; }
+@keyframes st-highlight { 0%, 100% { background: transparent; } 25% { background: #fff3cd; } }
 
 .chooser.custom-on .preset-list { opacity: 0.45; }
 .mode-note { margin: 14px 0 0; font-size: 14px; color: #5b6068; }

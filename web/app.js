@@ -5,6 +5,7 @@ const loadingBox = document.getElementById("loading");
 const errorBox = document.getElementById("error");
 const errorMessage = document.getElementById("error-message");
 const errorDetails = document.getElementById("error-details");
+const errorAction = document.getElementById("error-action");
 const detailsToggle = document.getElementById("details-toggle");
 const card = document.getElementById("card");
 const chooser = document.getElementById("chooser");
@@ -39,15 +40,20 @@ function formatDuration(seconds) {
   return hours ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
 }
 
-function showError(friendly, details) {
+function showError(friendly, details, action) {
   errorMessage.textContent = friendly;
   errorDetails.textContent = details || "";
   hide(errorDetails);
   detailsToggle.textContent = "Show details";
   if (details) { show(detailsToggle); } else { hide(detailsToggle); }
+  setShown(errorAction, action === "need_cookies");
   show(errorBox);
   errorBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
+
+errorAction.addEventListener("click", () => {
+  settingsView.openForSignIn();
+});
 
 function showCard(data) {
   const thumb = document.getElementById("thumb");
@@ -183,7 +189,7 @@ async function checkLink() {
     const data = await response.json();
     if (!response.ok) {
       const detail = data.detail || {};
-      showError(detail.friendly || "Something went wrong. Please try again.", detail.details || "");
+      showError(detail.friendly || "Something went wrong. Please try again.", detail.details || "", detail.action);
       return;
     }
     checkedUrl = url;
@@ -390,7 +396,7 @@ async function startDownload() {
     const data = await response.json();
     if (!response.ok) {
       const detail = data.detail || {};
-      showError(detail.friendly || "Something went wrong. Please try again.", detail.details || "");
+      showError(detail.friendly || "Something went wrong. Please try again.", detail.details || "", detail.action);
       return;
     }
     await queueView.refreshNow();   // the new download shows up in the list right away

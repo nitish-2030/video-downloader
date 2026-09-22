@@ -8,8 +8,16 @@ const settingsView = (() => {
   const presetSelect = document.getElementById("st-default-preset");
   const extraInput = document.getElementById("st-extra");
   const parallelInput = document.getElementById("st-parallel");
+  const cookiesFileInput = document.getElementById("st-cookies-file");
+  const cookiesBrowseButton = document.getElementById("st-cookies-browse");
+  const cookiesSection = document.getElementById("st-cookies-section");
+  const cookiesHelpToggle = document.getElementById("cookies-help-toggle");
+  const cookiesHelp = document.getElementById("cookies-help");
   const saveButton = document.getElementById("st-save");
   const message = document.getElementById("st-message");
+  const checkUpdateButton = document.getElementById("st-check-update");
+  const updateNowButton = document.getElementById("st-update-now");
+  const updateMessage = document.getElementById("st-update-message");
 
   const show = (element) => element.classList.remove("hidden");
   const hide = (element) => element.classList.add("hidden");
@@ -26,6 +34,7 @@ const settingsView = (() => {
     }
     extraInput.value = settings.extra_seconds;
     parallelInput.value = settings.parallel_downloads;
+    cookiesFileInput.value = settings.cookies_file || "";
   }
 
   function showMessage(text, isError) {
@@ -91,6 +100,25 @@ const settingsView = (() => {
     }
   }
 
+  async function browseCookiesFile() {
+    cookiesBrowseButton.disabled = true;
+    showMessage("", false);
+    try {
+      const response = await fetch("/api/settings/browse-cookies-file", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        const detail = data.detail || {};
+        showMessage(detail.friendly || "I couldn't open the file picker.", true);
+        return;
+      }
+      if (data.file) { cookiesFileInput.value = data.file; }
+    } catch (error) {
+      showMessage("I couldn't reach the tool. Is it still running?", true);
+    } finally {
+      cookiesBrowseButton.disabled = false;
+    }
+  }
+
   async function save() {
     saveButton.disabled = true;
     showMessage("", false);
@@ -103,6 +131,7 @@ const settingsView = (() => {
           default_preset: presetSelect.value,
           extra_seconds: Number(extraInput.value),
           parallel_downloads: Number(parallelInput.value),
+          cookies_file: cookiesFileInput.value,
         }),
       });
       const data = await response.json();
@@ -122,8 +151,68 @@ const settingsView = (() => {
     }
   }
 
+  async function checkForUpdate() {
+    checkUpdateButton.disabled = true;
+    hide(updateNowButton);
+    updateMessage.classList.remove("problem");
+    updateMessage.textContent = "Checking...";
+    show(updateMessage);
+    try {
+      const response = await fetch("/api/update-check");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data.latest) {
+        updateMessage.textContent = "Couldn't reach the update server. Check your internet.";
+        updateMessage.classList.add("problem");
+      } else if (data.update_available) {
+        updateMessage.textContent = `Update available: ${data.current} → ${data.latest}`;
+        show(updateNowButton);
+      } else {
+        updateMessage.textContent = `You're on the latest version (${data.current}).`;
+      }
+    } catch (error) {
+      updateMessage.textContent = "I couldn't reach the tool. Is it still running?";
+      updateMessage.classList.add("problem");
+    } finally {
+      checkUpdateButton.disabled = false;
+    }
+  }
+
+  async function runUpdate() {
+    updateNowButton.disabled = true;
+    updateMessage.classList.remove("problem");
+    updateMessage.textContent = "Updating... this can take a minute.";
+    try {
+      const response = await fetch("/api/update", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        const detail = data.detail || {};
+        updateMessage.textContent = detail.friendly || "The update didn't complete.";
+        updateMessage.classList.add("problem");
+        updateNowButton.disabled = false;
+        return;
+      }
+      updateMessage.textContent = "Updated. Restart the tool for it to take effect.";
+      hide(updateNowButton);
+    } catch (error) {
+      updateMessage.textContent = "I couldn't reach the tool. Is it still running?";
+      updateMessage.classList.add("problem");
+      updateNowButton.disabled = false;
+    }
+  }
+
   browseButton.addEventListener("click", browseFolder);
+  cookiesBrowseButton.addEventListener("click", browseCookiesFile);
   saveButton.addEventListener("click", save);
+  checkUpdateButton.addEventListener("click", checkForUpdate);
+  updateNowButton.addEventListener("click", runUpdate);
+
+  function setHelpOpen(open) {
+    setShown(cookiesHelp, open);
+    cookiesHelpToggle.textContent = open ? "Hide instructions" : "How do I get this file?";
+  }
+
+  cookiesHelpToggle.addEventListener("click", () => setHelpOpen(cookiesHelp.classList.contains("hidden")));
 
   function setOpen(open) {
     setShown(box, open);
@@ -133,9 +222,24 @@ const settingsView = (() => {
 
   toggle.addEventListener("click", () => setOpen(box.classList.contains("hidden")));
 
+  // Called when a download failed because a video needs sign-in: opens Settings, opens the
+  // "how do I get this file" help, and draws attention to the cookies.txt field.
+  function openForSignIn() {
+    setOpen(true);
+    setHelpOpen(true);
+    cookiesSection.classList.remove("highlight");
+    // restart the highlight animation even if it was just shown
+    requestAnimationFrame(() => cookiesSection.classList.add("highlight"));
+    setTimeout(() => {
+      cookiesSection.scrollIntoView({ behavior: "smooth", block: "center" });
+      cookiesFileInput.focus();
+    }, 50);
+  }
+
   return {
     setPresetOptions,
     onDefaultPresetSaved: (listener) => { onDefaultPresetSaved = listener; },
     close: () => setOpen(false),
+    openForSignIn,
   };
 })();

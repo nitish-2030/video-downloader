@@ -46,9 +46,40 @@
       <label>Downloads at once
         <input id="st-parallel" type="number" min="1" max="4" step="1">
       </label>
+      <div id="st-cookies-section">
+        <label>Sign in for restricted videos (age-restricted, members-only, private)
+          <div class="folder-row">
+            <input id="st-cookies-file" type="text" autocomplete="off" spellcheck="false"
+                   placeholder="e.g. C:\Users\you\Downloads\youtube.com_cookies.txt">
+            <button id="st-cookies-browse" type="button" class="secondary">Browse...</button>
+          </div>
+        </label>
+        <button id="cookies-help-toggle" type="button" class="link-button">How do I get this file?</button>
+        <div id="cookies-help" class="hint-box hidden">
+          <ol>
+            <li>In your browser, install the extension called <strong>"Get cookies.txt LOCALLY"</strong>
+              (search your browser's extension store for that exact name).</li>
+            <li>Go to <strong>youtube.com</strong>, signed in to the account you want to use.</li>
+            <li>Click the extension's icon and choose <strong>Export</strong>. It saves a file for
+              you, usually into your Downloads folder.</li>
+            <li>The saved file's name doesn't matter — it depends on the site and can come out as
+              something like <code>youtube.com_cookies.txt</code>, not always plain "cookies.txt".
+              You don't need to rename it: just click <strong>Browse...</strong> above and pick
+              whatever file it saved.</li>
+          </ol>
+          <p class="hint">If a restricted video stops working later, your sign-in has likely
+            expired — export a fresh file the same way and Browse to it again.</p>
+        </div>
+      </div>
       <div class="panel-actions">
         <button id="st-save" type="button">Save settings</button>
         <p id="st-message" class="panel-message hidden"></p>
+      </div>
+      <hr>
+      <div class="panel-actions">
+        <button id="st-check-update" type="button" class="secondary">Check for engine update</button>
+        <button id="st-update-now" type="button" class="hidden">Update now</button>
+        <p id="st-update-message" class="panel-message hidden"></p>
       </div>
     </section>
 
@@ -68,6 +99,7 @@
 
     <div id="error" class="error hidden">
       <p id="error-message"></p>
+      <button id="error-action" type="button" class="secondary hidden">Open Settings</button>
       <button id="details-toggle" type="button" class="link-button hidden">Show details</button>
       <pre id="error-details" class="hidden"></pre>
     </div>

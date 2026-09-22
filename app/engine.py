@@ -1,25 +1,179 @@
 """engine.py - talks to yt-dlp. No interface code lives here."""
 
 import os
+import shutil
 from urllib.parse import urlparse
 
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled, DownloadError, download_range_func
 
 from .presets import resolve_preset
+from .settings import get_settings
 
 
 class EngineError(Exception):
-    """An error with a friendly message for the user and raw details for 'Show details'."""
+    """An error with a friendly message for the user and raw details for 'Show details'.
 
-    def __init__(self, friendly, details=""):
+    `action`, when set, tells the interface to offer a specific next step (right now the only
+    one is "need_cookies": show a button that opens Settings, scrolled to the cookies.txt field,
+    with the "how do I get this file" help open).
+    """
+
+    def __init__(self, friendly, details="", action=None):
         super().__init__(friendly)
         self.friendly = friendly
         self.details = details
+        self.action = action
 
 
 class Canceled(DownloadCancelled):
     """The user pressed Cancel. Not an error: the job just stops and its half-made files are removed."""
+
+
+MIN_FREE_BYTES = 500 * 1024 * 1024   # 500 MB - a conservative floor before starting a download
+
+
+def check_disk_space(path, minimum_bytes=MIN_FREE_BYTES):
+    """Raises EngineError if the drive holding `path` doesn't have enough free space."""
+    os.makedirs(path, exist_ok=True)
+    free = shutil.disk_usage(path).free
+    if free < minimum_bytes:
+        free_mb = free // (1024 * 1024)
+        raise EngineError(
+            f"Not enough free disk space to download (only {free_mb} MB free). "
+            "Free up some space and try again."
+        )
+
+
+def _cookie_options():
+    """Reads the sign-in setting and returns the yt-dlp option(s) to add, if any.
+
+    Sign-in works only through an exported cookies.txt file - it doesn't need to read a live
+    browser's cookie database, so it isn't affected by Windows locking that database while the
+    browser is open.
+    """
+    settings = get_settings()
+    cookies_file = (settings.get("cookies_file") or "").strip()
+    if cookies_file:
+        return {"cookiefile": cookies_file}
+    return {}
+
+
+def _has_cookies_file():
+    return bool((get_settings().get("cookies_file") or "").strip())
+
+
+# The only kinds of failure worth retrying with cookies. Anything else (bot-check, network,
+# "page needs to be reloaded", etc.) fails straight away - retrying those with cookies just
+# wastes a second full attempt without any real chance of fixing the problem.
+SIGNIN_ERROR_KEYS = (
+    "sign in to confirm your age", "age-restricted", "age restricted",
+    "private video",
+    "members-only", "members only", "music premium members",
+)
+
+
+def _is_signin_error(message):
+    text = message.lower()
+    return any(key in text for key in SIGNIN_ERROR_KEYS)
+
+
+def _extract_with_cookie_fallback(options, url, download):
+    """Runs yt-dlp's extract_info without cookies first (the fast path for the common, public
+    video case), and only retries with cookies.txt if that first attempt fails with a sign-in
+    style error (age-restricted / private / members-only) and a cookies.txt is set.
+
+    This way a cookies.txt left over from one earlier exceptional video doesn't add a second
+    attempt to every normal download afterwards - cookies only get used when they're actually
+    needed. If the cookies retry also fails, that failure (the real reason) is what gets raised.
+    """
+    try:
+        with yt_dlp.YoutubeDL(options) as ydl:
+            return ydl.extract_info(url, download=download)
+    except DownloadError as error:
+        cookie_spec = _cookie_options()
+        if cookie_spec and _is_signin_error(str(error)):
+            with yt_dlp.YoutubeDL({**options, **cookie_spec}) as ydl:
+                return ydl.extract_info(url, download=download)
+        raise
+
+
+def _signin_message(what):
+    """Builds the friendly message for a video that needs sign-in (age-restricted, private,
+    members-only), depending on whether a cookies.txt file is already set up.
+
+    Returns (friendly, action) - action is "need_cookies" so the interface can offer a button
+    that opens Settings with the cookies.txt help open, rather than just naming the setting.
+    """
+    if _has_cookies_file():
+        return (
+            f"{what} Your cookies.txt sign-in didn't work for it — it may have expired, or be "
+            "for a different account. Export a fresh cookies.txt from Settings and try again.",
+            "need_cookies",
+        )
+    return (
+        f"{what} Add a cookies.txt file in Settings to download it.",
+        "need_cookies",
+    )
+
+
+def _classify_download_error(message):
+    """Turns yt-dlp's raw error text into one of our known, friendly messages.
+
+    Returns (friendly, action) if something matches, action may be None. Returns None if
+    nothing matches, so the caller can fall back to a generic message.
+    """
+    text = message.lower()
+
+    signin_checks = [
+        (("sign in to confirm your age", "age-restricted", "age restricted"),
+         "This video is age-restricted."),
+        (("private video",),
+         "This video is private."),
+        (("members-only", "members only", "music premium members"),
+         "This video is for members only."),
+    ]
+    for keys, what in signin_checks:
+        if any(key in text for key in keys):
+            return _signin_message(what)
+    # (SIGNIN_ERROR_KEYS above is the flat version of the same keys, used to decide whether a
+    # cookies retry is worth trying at all - keep both lists in sync if these ever change.)
+
+    checks = [
+        (("sign in to confirm you're not a bot", "confirm you're not a bot"),
+         "YouTube is asking to confirm you're not a bot right now. This is usually temporary — "
+         "try again in a few minutes, or try a different video."),
+        (("this video is unavailable", "video unavailable", "video has been removed"),
+         "This video isn't available anymore — it may have been removed, made private, or "
+         "blocked in your region."),
+        (("unsupported url",),
+         "This link isn't a video page I can read. Double-check the link and try again."),
+        (("requested format is not available", "no video formats found"),
+         "Couldn't find a downloadable version of this video at that quality."),
+        (("copyright",),
+         "This video was blocked due to a copyright claim."),
+        (("429", "too many requests"),
+         "Too many requests right now. Wait a bit and try again."),
+        (("timed out", "timeout"),
+         "The connection timed out. Check your internet and try again."),
+        (("failed to establish a new connection", "name or service not known", "getaddrinfo failed",
+          "connection refused", "network is unreachable"),
+         "Couldn't connect to the internet. Check your connection and try again."),
+        (("live event will begin", "this live event", "premieres in"),
+         "This video hasn't started yet — it's scheduled or a premiere."),
+        (("live stream recording is not available",),
+         "This live stream's recording isn't ready yet. Try again later."),
+        (("could not open cookie", "no such file or directory", "cookie file"),
+         "Couldn't read your cookies.txt file. Check that the path in Settings still points to "
+         "it, then try again."),
+        (("the page needs to be reloaded", "please reload"),
+         "YouTube had a temporary hiccup loading this video. Try again in a moment — if it "
+         "keeps happening, export a fresh cookies.txt in Settings and try again."),
+    ]
+    for keys, friendly in checks:
+        if any(key in text for key in keys):
+            return (friendly, None)
+    return None
 
 
 def detect_platform(url):
@@ -112,10 +266,10 @@ def get_info(url):
         "skip_download": True,
     }
     try:
-        with yt_dlp.YoutubeDL(options) as ydl:
-            info = ydl.extract_info(url, download=False)
+        info = _extract_with_cookie_fallback(options, url, download=False)
     except DownloadError as error:
-        raise EngineError("Couldn't read this video.", str(error)) from error
+        friendly, action = _classify_download_error(str(error)) or ("Couldn't read this video.", None)
+        raise EngineError(friendly, str(error), action=action) from error
 
     sizes = []
     for fmt in info.get("formats", []):
@@ -265,6 +419,7 @@ def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=
 
     work_dir = work_dir or os.path.join(output_dir, "_working")
     os.makedirs(work_dir, exist_ok=True)
+    check_disk_space(work_dir)
 
     # The quality goes into the file name so two qualities of one video never overwrite each other.
     name = "%(id)s"
@@ -287,6 +442,7 @@ def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=
     if section:
         options["download_ranges"] = download_range_func([], [section])
         options["force_keyframes_at_cuts"] = True
+    cookie_spec = _cookie_options()
 
     content = preset["content"]
     if content == "video_audio":
@@ -301,8 +457,12 @@ def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=
         # "res" is the short side of the picture. res:720 means: the best picture up to 720, not bigger.
         options["format_sort"] = [f"res:{quality}"]
 
-    try:
-        with yt_dlp.YoutubeDL(options) as ydl:
+    # Built once here (not merged into `options`) so the first attempt below never carries cookies -
+    # cookies only get added if that first attempt fails with a sign-in style error.
+    cookie_options = {**options, **cookie_spec} if cookie_spec else None
+
+    def _run(opts):
+        with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
             if cancel is not None and cancel.is_set():
                 raise Canceled()
@@ -319,7 +479,24 @@ def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=
             if downloads and downloads[0].get("filepath"):
                 return downloads[0]["filepath"]
             return ydl.prepare_filename(info)
+
+    try:
+        return _run(options)
     except DownloadError as error:
         if cancel is not None and cancel.is_set():
             raise Canceled() from error   # the cancel stopped a helper program, so yt-dlp complained
-        raise EngineError("The download failed.", str(error)) from error
+        # Only worth a second attempt with cookies if this looks like a sign-in problem
+        # (age-restricted / private / members-only) and a cookies.txt is actually set. A bot-check,
+        # network error, or anything else won't be fixed by cookies, so fail straight away instead
+        # of wasting a full second download attempt on it.
+        if not (cookie_options and _is_signin_error(str(error))):
+            friendly, action = _classify_download_error(str(error)) or ("The download failed.", None)
+            raise EngineError(friendly, str(error), action=action) from error
+        try:
+            return _run(cookie_options)
+        except DownloadError as retry_error:
+            if cancel is not None and cancel.is_set():
+                raise Canceled() from retry_error
+            friendly, action = _classify_download_error(str(retry_error)) or (
+                "The download failed.", None)
+            raise EngineError(friendly, str(retry_error), action=action) from retry_error

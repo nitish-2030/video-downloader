@@ -93,6 +93,7 @@ const queueView = (() => {
       <div class="bar"><div class="bar-fill"></div></div>
       <div class="qdone hidden"></div>
       <div class="qerror hidden">
+        <button type="button" class="small secondary q-action hidden">Open Settings</button>
         <button type="button" class="link-button q-toggle hidden">Show details</button>
         <pre class="qdetails hidden"></pre>
       </div>`;
@@ -101,11 +102,13 @@ const queueView = (() => {
       title: find(".qtitle"), meta: find(".qmeta"), status: find(".qstatus"),
       bar: find(".bar"), fill: find(".bar-fill"), done: find(".qdone"),
       errorBox: find(".qerror"), toggle: find(".q-toggle"), details: find(".qdetails"),
+      action: find(".q-action"),
       cancel: find(".q-cancel"), retry: find(".q-retry"), remove: find(".q-remove"),
     };
     row.refs.cancel.addEventListener("click", () => act("POST", `/api/jobs/${id}/cancel`));
     row.refs.retry.addEventListener("click", () => act("POST", `/api/jobs/${id}/retry`));
     row.refs.remove.addEventListener("click", () => act("DELETE", `/api/jobs/${id}`));
+    row.refs.action.addEventListener("click", () => { settingsView.openForSignIn(); });
     row.refs.toggle.addEventListener("click", () => {
       const opening = row.refs.details.classList.contains("hidden");
       setShown(row.refs.details, opening);
@@ -154,10 +157,12 @@ const queueView = (() => {
       refs.status.textContent = problem.friendly || "The download failed.";
       refs.details.textContent = problem.details || "";
       setShown(refs.toggle, Boolean(problem.details));
+      setShown(refs.action, problem.action === "need_cookies");
       show(refs.errorBox);
     } else {
       hide(refs.errorBox);
       hide(refs.details);
+      hide(refs.action);
       refs.toggle.textContent = "Show details";
     }
   }
@@ -216,7 +221,7 @@ const queueView = (() => {
       if (!response.ok) {
         const data = await response.json();
         const detail = data.detail || {};
-        onError(detail.friendly || "Something went wrong. Please try again.", detail.details || "");
+        onError(detail.friendly || "Something went wrong. Please try again.", detail.details || "", detail.action);
       }
     } catch (error) {
       onError("I couldn't reach the tool. Is it still running?", String(error));

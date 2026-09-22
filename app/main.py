@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from .engine import QUALITY_STEPS, EngineError, detect_platform, get_info, plan_section, quality_label
 from . import history
+from . import updater
 from .jobs import (apply_settings, cancel_job, clean_leftovers, clear_finished, get_job, list_jobs,
                    remove_job, retry_job, start_job)
 from .presets import (AUDIO_FORMATS, CONTENT_CHOICES, DEFAULT_PRESET, PRESETS, VIDEO_FORMATS,
@@ -55,6 +56,7 @@ class SettingsUpdate(BaseModel):
     default_preset: str | None = None
     extra_seconds: float | None = None
     parallel_downloads: int | None = None
+    cookies_file: str | None = None
 
 
 class DownloadRequest(BaseModel):
@@ -88,7 +90,7 @@ def _plan_for(url, section):
     except EngineError as error:
         raise HTTPException(
             status_code=400,
-            detail={"friendly": error.friendly, "details": error.details},
+            detail={"friendly": error.friendly, "details": error.details, "action": error.action},
         )
     except Exception as error:
         raise HTTPException(
@@ -100,6 +102,29 @@ def _plan_for(url, section):
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/update-check")
+def update_check():
+    """Checks PyPI for a newer yt-dlp. Never updates anything by itself."""
+    return updater.check_for_update()
+
+
+@app.post("/api/update")
+def update_run():
+    """Upgrades yt-dlp via pip. The owner presses a button for this - it never runs on its own.
+
+    Python has already loaded the old yt-dlp into memory, so the new version only takes effect
+    after the tool is restarted - the page tells the owner that.
+    """
+    ok, message = updater.run_update()
+    if not ok:
+        raise HTTPException(
+            status_code=500,
+            detail={"friendly": "The update didn't complete. Try again, or update it yourself with "
+                                 "'pip install --upgrade yt-dlp'.", "details": message},
+        )
+    return {"updated": True, "details": message}
 
 
 @app.get("/api/settings")
@@ -180,6 +205,31 @@ def settings_browse_folder():
     return {"folder": chosen or None}
 
 
+@app.post("/api/settings/browse-cookies-file")
+def settings_browse_cookies_file():
+    """Opens a native 'choose a file' dialog for picking an exported cookies.txt.
+
+    Returns {"file": null} if the editor canceled it. Blocks until the dialog closes - fine for
+    a local, single-editor tool (same pattern as the folder picker above).
+    """
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError as error:
+        raise HTTPException(status_code=501, detail={
+            "friendly": "The file picker isn't available on this computer. Please type the path instead.",
+            "details": str(error)})
+    with _browse_lock:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        chosen = filedialog.askopenfilename(
+            title="Choose your exported cookies.txt",
+            filetypes=[("Cookies file", "*.txt"), ("All files", "*.*")])
+        root.destroy()
+    return {"file": chosen or None}
+
+
 @app.get("/api/presets")
 def presets():
     """The quick presets in plain words, for the page to show."""
@@ -218,7 +268,7 @@ def info(request: InfoRequest):
     except EngineError as error:
         raise HTTPException(
             status_code=400,
-            detail={"friendly": error.friendly, "details": error.details},
+            detail={"friendly": error.friendly, "details": error.details, "action": error.action},
         )
     except Exception as error:
         raise HTTPException(
