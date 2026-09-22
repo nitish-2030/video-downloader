@@ -19,6 +19,7 @@ const batchNote = document.getElementById("batch-note");
 
 let presets = [];
 let selectedPreset = null;
+let currentDefaultPreset = null;   // the preset that's highlighted just because it's the default
 let mode = "single";        // "single" (one link, checked) or "batch" (many links pasted)
 let supportedLinks = [];    // in batch mode: the links that will be downloaded
 let standardQualities = []; // the usual quality steps, for the Custom box in batch mode (no video was checked)
@@ -264,7 +265,20 @@ function renderPresets(defaultId) {
     button.addEventListener("click", () => { customMode.close(); selectPreset(preset.id); });
     presetList.appendChild(button);
   }
+  currentDefaultPreset = defaultId;
   selectPreset(defaultId);
+}
+
+// Called when Settings saves a new default preset. If the editor hasn't picked a preset of their
+// own for the current link yet (they're still sitting on whatever was highlighted by default),
+// the highlight follows the new default. If they already picked something themselves, that choice
+// is left alone - a background settings change should never override a choice they just made.
+function applyDefaultPreset(presetId) {
+  const wasOnDefault = selectedPreset === currentDefaultPreset;
+  currentDefaultPreset = presetId;
+  if (wasOnDefault && presets.some((preset) => preset.id === presetId)) {
+    selectPreset(presetId);
+  }
 }
 
 async function loadPresets() {
@@ -276,6 +290,7 @@ async function loadPresets() {
     renderPresets(data.default);
     standardQualities = (data.quality_steps || []).map((step) => ({ value: step.value, label: step.label }));
     customMode.setChoices(data);
+    settingsView.setPresetOptions(presets);
     if (!card.classList.contains("hidden") || mode === "batch") { show(chooser); }
     if (mode === "batch") { customMode.setInfo({ quality_options: standardQualities }); }
   } catch (error) {
@@ -410,5 +425,13 @@ linkInput.addEventListener("input", () => {
 
 customMode.onModeChange(applyMode);
 sectionMode.onChange(applyMode);
+settingsView.onDefaultPresetSaved(applyDefaultPreset);
 queueView.start({ onError: showError });
 loadPresets();
+
+// ---------- History / Settings: only one open at a time ----------
+
+const historyToggle = document.getElementById("history-toggle");
+const settingsToggle = document.getElementById("settings-toggle");
+historyToggle.addEventListener("click", () => settingsView.close());
+settingsToggle.addEventListener("click", () => historyView.close());

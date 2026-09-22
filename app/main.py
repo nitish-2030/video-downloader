@@ -1,5 +1,7 @@
 """main.py - the local server. It only listens on this computer (127.0.0.1)."""
 
+import os
+import threading
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -9,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .engine import QUALITY_STEPS, EngineError, detect_platform, get_info, plan_section, quality_label
+from . import history
 from .jobs import (apply_settings, cancel_job, clean_leftovers, clear_finished, get_job, list_jobs,
                    remove_job, retry_job, start_job)
 from .presets import (AUDIO_FORMATS, CONTENT_CHOICES, DEFAULT_PRESET, PRESETS, VIDEO_FORMATS,
@@ -24,6 +27,7 @@ async def lifespan(app):
 
 
 app = FastAPI(title="Video Downloader for Editors", lifespan=lifespan)
+_browse_lock = threading.Lock()   # only one folder-picker dialog at a time
 
 
 class InfoRequest(BaseModel):
@@ -120,11 +124,68 @@ def settings_put(request: SettingsUpdate):
     return {"settings": saved}
 
 
+@app.get("/api/history")
+def history_list():
+    """Past finished downloads, newest first. Each entry says whether its file is still there."""
+    return {"history": history.list_entries()}
+
+
+@app.delete("/api/history")
+def history_clear():
+    """Empties the history list. The downloaded files themselves are never touched."""
+    history.clear_history()
+    return {"history": []}
+
+
+class FolderRequest(BaseModel):
+    path: str
+
+
+@app.post("/api/history/open-folder")
+def history_open_folder(request: FolderRequest):
+    """Opens the given file's folder in Explorer (or Finder/file manager). 'path' must be one this
+    program already knows about (a history entry's path, or a finished job's path) - the page
+    never lets someone type an arbitrary path in."""
+    known_paths = {entry["path"] for entry in history.list_entries() if entry.get("path")}
+    known_paths |= {job["path"] for job in list_jobs() if job.get("path")}
+    if request.path not in known_paths:
+        raise HTTPException(status_code=400, detail={"friendly": "That file isn't in the history or queue."})
+    if not history.open_folder(request.path):
+        raise HTTPException(status_code=404,
+                            detail={"friendly": "That file and its folder can't be found anymore."})
+    return {"opened": True}
+
+
+@app.post("/api/settings/browse-folder")
+def settings_browse_folder():
+    """Opens the computer's own folder picker and waits for a choice. Returns {"folder": null} if
+    the editor canceled it. This blocks the request until the picker is closed, same as a native
+    Save dialog would - fine for a local, single-editor tool."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError as error:
+        raise HTTPException(status_code=501, detail={
+            "friendly": "The folder picker isn't available on this computer. Please type the path instead.",
+            "details": str(error)})
+    current = get_settings()["output_folder"]
+    with _browse_lock:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        chosen = filedialog.askdirectory(
+            title="Choose where to save your videos",
+            initialdir=current if os.path.isdir(current) else str(Path.home()))
+        root.destroy()
+    return {"folder": chosen or None}
+
+
 @app.get("/api/presets")
 def presets():
     """The quick presets in plain words, for the page to show."""
+    default_id = get_settings().get("default_preset", DEFAULT_PRESET)
     return {
-        "default": DEFAULT_PRESET,
+        "default": default_id if default_id in PRESETS else DEFAULT_PRESET,
         "presets": [
             {
                 "id": preset_id,

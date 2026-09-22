@@ -11,6 +11,7 @@ import time
 import uuid
 from pathlib import Path
 
+from . import history
 from .engine import Canceled, EngineError, detect_platform
 from .pipeline import run_preset
 from .presets import PRESETS, resolve_preset
@@ -86,9 +87,11 @@ def _run(job_id):
     try:
         times = (section["padded_start"], section["padded_end"]) if section else None
         info = {}
+        summary = _summary(preset)
         result = run_preset(url, preset, output_dir(), on_progress=on_progress, section=times,
                             cancel=cancel, info_out=info,
-                            organize={"summary": _summary(preset), "section": section})
+                            organize={"summary": summary, "section": section})
+        title = info.get("title") or _jobs[job_id].get("title") or ""
         changes = {}
         with _lock:
             if info.get("title") and not _jobs[job_id].get("title"):
@@ -96,6 +99,8 @@ def _run(job_id):
         _update(job_id, status="done", percent=100.0, speed=None, eta=None,
                 file=os.path.basename(result), folder=os.path.dirname(result), path=result,
                 video_id=info.get("id"), **changes)
+        history.add_entry(title=title, url=url, platform_name=info.get("platform") or detect_platform(url),
+                          preset_summary=summary, path=result)
     except Canceled:
         _update(job_id, status="canceled", speed=None, eta=None)
     except EngineError as error:

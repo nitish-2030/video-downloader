@@ -301,3 +301,5 @@ downloader/
 `jobs.py`'s "done" transition, add `GET /api/history`, add a server-side "open folder" action,
 write `test_history.py` (offline, following the `test_filing.py` pattern), give files + test to
 owner.*
+Step 4 done. Ab Step 5: page par History aur Settings panel — pehle current web files dekh leta hoon taaki wahi style/pattern follow karu.
+step 5 done next step 6 

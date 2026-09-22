@@ -113,3 +113,34 @@ textarea:focus { outline: 2px solid #3b6cf6; border-color: #3b6cf6; }
 .batch-list .why { color: #8a1f1f; flex: none; }
 .batch-note { margin: 12px 0 0; padding: 10px 12px; background: #eef7f0; border: 1px solid #b9dcc3; border-radius: 8px; color: #17663a; font-size: 14px; }
 .batch-note.problem { background: #fff7e0; border-color: #f0d78a; color: #6b4e00; }
+
+.top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.top-buttons { display: flex; gap: 8px; flex: none; }
+.top-buttons button[aria-pressed="true"] { background: #d5d9de; }
+
+.panel { margin: 0 0 20px; background: #fff; border: 1px solid #dfe2e6; border-radius: 12px; padding: 14px 16px; }
+.panel h3 { margin: 0 0 10px; font-size: 16px; }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.panel-head h3 { margin: 0; }
+.panel label { display: grid; gap: 4px; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.panel label:last-of-type { margin-bottom: 0; }
+.panel select, .panel input[type="text"], .panel input[type="number"] { padding: 10px 12px; font-size: 15px; font-weight: 400; border: 1px solid #c8ccd2; border-radius: 8px; background: #fff; color: #1b1d21; }
+.panel select:focus, .panel input:focus { outline: 2px solid #3b6cf6; border-color: #3b6cf6; }
+.folder-row { display: flex; gap: 8px; }
+.folder-row input { flex: 1; min-width: 0; }
+.folder-row button { flex: none; }
+.panel-actions { margin-top: 14px; display: flex; align-items: center; gap: 12px; }
+.panel-message { margin: 0; font-size: 14px; color: #17663a; }
+.panel-message.problem { color: #8a1f1f; }
+
+.history-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.hrow { background: #fafbfc; border: 1px solid #dfe2e6; border-radius: 10px; padding: 10px 12px; }
+.htitle { font-weight: 600; word-break: break-word; }
+.hmeta { margin-top: 2px; font-size: 13px; color: #5b6068; }
+.hbottom { margin-top: 8px; }
+.hgone { font-size: 13px; color: #8a1f1f; }
+
+@media (max-width: 560px) {
+  .top-row { flex-wrap: wrap; }
+  .folder-row { flex-wrap: wrap; }
+}
