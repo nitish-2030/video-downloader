@@ -1,6 +1,7 @@
 """jobs.py - the download queue. Jobs wait in order, run one (or two) at a time, and can be canceled or retried.
 
-Everything is kept in memory: closing the tool forgets the list (Phase 7 adds the history).
+The list of jobs is kept in memory: closing the tool forgets it (the history is kept separately).
+Where files are saved and how many jobs run at once come from the settings.
 """
 
 import os
@@ -10,14 +11,16 @@ import time
 import uuid
 from pathlib import Path
 
-from .engine import Canceled, EngineError
+from .engine import Canceled, EngineError, detect_platform
 from .pipeline import run_preset
 from .presets import PRESETS, resolve_preset
+from .settings import get_settings
 
-# Temporary fixed folder. Phase 7 adds the output-folder setting.
-DOWNLOAD_DIR = Path(__file__).resolve().parent.parent / "downloads"
+# Normally None: files go to the output folder from the settings. The test scripts can set this to a
+# folder of their own, and then that folder is used instead.
+DOWNLOAD_DIR = None
 
-# How many downloads run at the same time (Phase 7 adds this to the settings).
+# How many downloads run at the same time. Filled from the settings by apply_settings().
 MAX_PARALLEL = 1
 
 FINISHED = ("done", "error", "canceled")   # jobs that are over (they can be removed)
@@ -27,6 +30,16 @@ _jobs = {}           # job id -> what the page sees. The order of this dictionar
 _requests = {}       # job id -> (preset, section): what is needed to run the job again
 _cancel_flags = {}   # job id -> Event that stops the job when set
 _running = set()     # ids of jobs that have been started and are not finished yet
+
+
+def output_dir():
+    """The folder that files are saved in right now."""
+    return str(DOWNLOAD_DIR) if DOWNLOAD_DIR else get_settings()["output_folder"]
+
+
+def apply_settings():
+    """Takes the number of simultaneous downloads from the settings (at start-up and after a change)."""
+    set_max_parallel(get_settings()["parallel_downloads"])
 
 
 def _summary(preset):
@@ -72,10 +85,17 @@ def _run(job_id):
 
     try:
         times = (section["padded_start"], section["padded_end"]) if section else None
-        result = run_preset(url, preset, str(DOWNLOAD_DIR), on_progress=on_progress,
-                            section=times, cancel=cancel)
+        info = {}
+        result = run_preset(url, preset, output_dir(), on_progress=on_progress, section=times,
+                            cancel=cancel, info_out=info,
+                            organize={"summary": _summary(preset), "section": section})
+        changes = {}
+        with _lock:
+            if info.get("title") and not _jobs[job_id].get("title"):
+                changes["title"] = info["title"]
         _update(job_id, status="done", percent=100.0, speed=None, eta=None,
-                file=os.path.basename(result), folder=str(DOWNLOAD_DIR))
+                file=os.path.basename(result), folder=os.path.dirname(result), path=result,
+                video_id=info.get("id"), **changes)
     except Canceled:
         _update(job_id, status="canceled", speed=None, eta=None)
     except EngineError as error:
@@ -115,8 +135,11 @@ def start_job(url, preset, section=None, title=None):
             "percent": 0.0,
             "speed": None,
             "eta": None,
+            "platform": detect_platform(url),      # youtube | x
+            "video_id": None,
             "file": None,
             "folder": None,
+            "path": None,          # the full path of the finished file
             "error": None,
             "created": time.time(),
             "started": None,      # when the job left the waiting line (None = has not started yet)
@@ -170,7 +193,7 @@ def retry_job(job_id):
             raise ValueError("Only a failed or canceled download can be tried again.")
         del _jobs[job_id]                       # re-adding puts it at the end of the queue
         job.update(status="queued", cancel_requested=False, percent=0.0, speed=None, eta=None,
-                   file=None, folder=None, error=None, started=None)
+                   file=None, folder=None, path=None, video_id=None, error=None, started=None)
         _jobs[job_id] = job
         _cancel_flags[job_id] = threading.Event()
     _schedule()
@@ -221,4 +244,4 @@ def set_max_parallel(count):
 
 def clean_leftovers():
     """At start-up: removes half-made files that a crash or a forced close left behind."""
-    shutil.rmtree(DOWNLOAD_DIR / "_working", ignore_errors=True)
+    shutil.rmtree(Path(output_dir()) / "_working", ignore_errors=True)

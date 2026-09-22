@@ -9,8 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .engine import QUALITY_STEPS, EngineError, detect_platform, get_info, plan_section, quality_label
-from .jobs import (cancel_job, clean_leftovers, clear_finished, get_job, list_jobs, remove_job,
-                   retry_job, start_job)
+from .jobs import (apply_settings, cancel_job, clean_leftovers, clear_finished, get_job, list_jobs,
+                   remove_job, retry_job, start_job)
 from .presets import (AUDIO_FORMATS, CONTENT_CHOICES, DEFAULT_PRESET, PRESETS, VIDEO_FORMATS,
                       build_custom_preset)
 from .settings import (MAX_EXTRA_SECONDS, MAX_PARALLEL_ALLOWED, MIN_PARALLEL, SettingsError,
@@ -19,6 +19,7 @@ from .settings import (MAX_EXTRA_SECONDS, MAX_PARALLEL_ALLOWED, MIN_PARALLEL, Se
 @asynccontextmanager
 async def lifespan(app):
     clean_leftovers()   # half-made files from a crash or Ctrl+C are thrown away at start
+    apply_settings()    # the number of downloads at once comes from the settings
     yield
 
 
@@ -111,10 +112,12 @@ def settings_get():
 def settings_put(request: SettingsUpdate):
     """Saves the settings that were sent. A bad value saves nothing and gives a friendly message."""
     try:
-        return {"settings": update_settings(request.model_dump(exclude_none=True))}
+        saved = update_settings(request.model_dump(exclude_none=True))
     except SettingsError as error:
         raise HTTPException(status_code=400,
                             detail={"friendly": error.friendly, "details": error.details})
+    apply_settings()    # a new number of downloads at once takes effect straight away
+    return {"settings": saved}
 
 
 @app.get("/api/presets")

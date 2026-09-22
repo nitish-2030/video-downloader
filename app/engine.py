@@ -243,7 +243,8 @@ def _time_tag(seconds):
     return f"{seconds:.1f}".replace(".", "p")
 
 
-def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=None, work_dir=None):
+def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=None, work_dir=None,
+             info_out=None):
     """Downloads a video (no conversion yet). Returns the path of the saved file.
 
     The raw download goes into work_dir (default: a "_working" folder inside output_dir), never straight
@@ -252,6 +253,8 @@ def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=
     preset_id: a preset id like "premiere", or a ready preset dictionary (the Custom section).
     section: None for the whole video, or (start_seconds, end_seconds).
     cancel: an Event; when it is set the download stops and Canceled is raised.
+    info_out: an empty dictionary that gets filled with what is known about the video (id, title, uploader,
+    platform, webpage_url, duration), so the caller can name and describe the file. Optional.
     """
     url = url.strip()
     if detect_platform(url) is None:
@@ -303,6 +306,15 @@ def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=
             info = ydl.extract_info(url, download=True)
             if cancel is not None and cancel.is_set():
                 raise Canceled()
+            if info_out is not None:
+                info_out.update({
+                    "id": info.get("id"),
+                    "title": info.get("title"),
+                    "uploader": info.get("uploader") or info.get("channel") or "",
+                    "platform": detect_platform(url),
+                    "webpage_url": info.get("webpage_url") or url,
+                    "duration": info.get("duration"),
+                })
             downloads = info.get("requested_downloads") or []
             if downloads and downloads[0].get("filepath"):
                 return downloads[0]["filepath"]
