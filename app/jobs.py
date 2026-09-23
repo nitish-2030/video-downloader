@@ -50,6 +50,12 @@ def _summary(preset):
     return preset.get("summary") or "Custom"
 
 
+def _preset_id(preset):
+    """The raw preset id for history/filtering - 'premiere', 'broll', etc, or 'custom' for a
+    one-off Custom-options choice (which has no fixed id of its own)."""
+    return preset if isinstance(preset, str) else "custom"
+
+
 def _update(job_id, **changes):
     with _lock:
         if job_id in _jobs:
@@ -73,6 +79,7 @@ def _run(job_id):
     with _lock:
         url = _jobs[job_id]["url"]
         preset, section = _requests[job_id]
+        content = _jobs[job_id]["content"]
         cancel = _cancel_flags[job_id]
 
     def on_progress(event):
@@ -100,7 +107,9 @@ def _run(job_id):
                 file=os.path.basename(result), folder=os.path.dirname(result), path=result,
                 video_id=info.get("id"), **changes)
         history.add_entry(title=title, url=url, platform_name=info.get("platform") or detect_platform(url),
-                          preset_summary=summary, path=result)
+                          preset_summary=summary, path=result,
+                          preset_id=_preset_id(preset), content=content, section=section,
+                          job_id=job_id)
     except Canceled:
         _update(job_id, status="canceled", speed=None, eta=None)
     except EngineError as error:
@@ -132,7 +141,7 @@ def start_job(url, preset, section=None, title=None):
             "url": url,
             "title": title,
             "summary": _summary(preset),          # e.g. "Premiere ready"
-            "preset": preset if isinstance(preset, str) else "custom",
+            "preset": _preset_id(preset),
             "content": resolve_preset(preset)["content"],   # video_audio | video_only | audio_only
             "section": section,                   # None = whole video
             "status": "queued",   # queued | downloading | converting | done | error | canceled

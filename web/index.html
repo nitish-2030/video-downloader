@@ -15,7 +15,6 @@
           <p class="subtitle">Paste a YouTube or X link (or several, one per line) to get started.</p>
         </div>
         <div class="top-buttons">
-          <button id="history-toggle" type="button" class="secondary" aria-pressed="false">History</button>
           <button id="settings-toggle" type="button" class="secondary" aria-pressed="false">Settings</button>
         </div>
       </div>
@@ -108,31 +107,46 @@
     </main>
 
     <aside id="queue-sidebar" class="side-panel">
-      <section id="queue" class="queue hidden">
+      <section id="queue" class="queue">
         <div class="queue-head">
           <h3>Downloads</h3>
-          <button id="clear-finished" type="button" class="link-button hidden">Clear finished</button>
+          <button id="queue-clear-history" type="button" class="link-button hidden">Clear history</button>
+        </div>
+        <div class="queue-tabs" role="tablist">
+          <button id="queue-tab-active" type="button" class="tab-btn active" role="tab" aria-selected="true">In progress</button>
+          <button id="queue-tab-completed" type="button" class="tab-btn" role="tab" aria-selected="false">Completed</button>
         </div>
         <p id="queue-notice" class="queue-notice hidden"></p>
-        <ul id="queue-list" class="queue-list"></ul>
+
+        <div id="queue-active-pane" class="queue-pane">
+          <p id="queue-active-empty" class="queue-empty hidden">Nothing downloading right now.</p>
+          <ul id="queue-active-list" class="queue-list"></ul>
+        </div>
+
+        <div id="queue-completed-pane" class="queue-pane hidden">
+          <div class="queue-filters">
+            <label>Type
+              <select id="q-filter-type">
+                <option value="all">All</option>
+              </select>
+            </label>
+            <label>Range
+              <select id="q-filter-range">
+                <option value="all">All</option>
+                <option value="full">Full video</option>
+                <option value="section">Section only</option>
+              </select>
+            </label>
+          </div>
+          <p id="queue-completed-empty" class="queue-empty hidden">Nothing downloaded yet.</p>
+          <ul id="queue-completed-list" class="queue-list"></ul>
+          <button id="queue-load-older" type="button" class="secondary wide hidden">Load older</button>
+        </div>
       </section>
     </aside>
   </div>
 
   <div id="drawer-backdrop" class="drawer-backdrop"></div>
-
-  <section id="history-panel" class="panel drawer">
-    <div class="drawer-header">
-      <h3>History</h3>
-      <div class="drawer-header-actions">
-        <button id="history-clear" type="button" class="link-button hidden">Clear history</button>
-        <button id="history-close" type="button" class="drawer-close" aria-label="Close history">&times;</button>
-      </div>
-    </div>
-    <p id="history-empty" class="hint">Nothing downloaded yet.</p>
-    <p id="history-message" class="panel-message hidden"></p>
-    <ul id="history-list" class="history-list"></ul>
-  </section>
 
   <section id="settings-panel" class="panel drawer">
     <div class="drawer-header">
@@ -195,7 +209,6 @@
   <script src="section.js"></script>
   <script src="queue.js"></script>
   <script src="settings.js"></script>
-  <script src="history.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

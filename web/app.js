@@ -444,33 +444,27 @@ settingsView.onDefaultPresetSaved(applyDefaultPreset);
 queueView.start({ onError: showError });
 loadPresets();
 
-// ---------- History / Settings: slide-over drawers, only one open at a time ----------
+// ---------- Settings: a slide-over drawer ----------
+// (History used to be a second drawer here too - it's now folded into the Downloads panel
+// itself, in queue.js, so Settings is the only drawer left.)
 
-const historyToggle = document.getElementById("history-toggle");
-const settingsToggle = document.getElementById("settings-toggle");
 const drawerBackdrop = document.getElementById("drawer-backdrop");
-const historyPanel = document.getElementById("history-panel");
 const settingsPanel = document.getElementById("settings-panel");
 
-historyToggle.addEventListener("click", () => settingsView.close());
-settingsToggle.addEventListener("click", () => historyView.close());
-
-// Recomputed from the drawers' actual state (rather than tracked separately) so it stays correct
-// no matter which order the open/close calls above run in.
+// Recomputed from the drawer's actual state (rather than tracked separately) so it stays correct
+// no matter what order things happen in.
 window.updateDrawerBackdrop = function updateDrawerBackdrop() {
-  const anyOpen = historyPanel.classList.contains("open") || settingsPanel.classList.contains("open");
+  const anyOpen = settingsPanel.classList.contains("open");
   drawerBackdrop.classList.toggle("open", anyOpen);
   document.body.classList.toggle("drawer-open", anyOpen);
 };
 
 drawerBackdrop.addEventListener("click", () => {
-  historyView.close();
   settingsView.close();
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    historyView.close();
     settingsView.close();
   }
 });

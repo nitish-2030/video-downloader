@@ -42,6 +42,7 @@ button:hover { background: #2f59d1; }
 button:disabled { background: #9aa9d6; cursor: default; }
 button.secondary { background: #e3e6ea; color: #1b1d21; }
 button.secondary:hover { background: #d5d9de; }
+button.wide { width: 100%; }
 .link-button { background: none; color: #3b6cf6; padding: 4px 0; }
 .link-button:hover { background: none; text-decoration: underline; }
 .hidden { display: none !important; }
@@ -114,7 +115,7 @@ input[type="radio"]:focus { outline: 2px solid #3b6cf6; outline-offset: 2px; }
   .timeline .choice, .section-fields .field { flex: 1 1 100%; }
 }
 
-/* ---------- Downloads sidebar ---------- */
+/* ---------- Downloads sidebar (active jobs + permanent history, merged) ---------- */
 button.small { padding: 6px 12px; font-size: 13px; }
 .queue {
   background: #fff;
@@ -132,8 +133,18 @@ button.small { padding: 6px 12px; font-size: 13px; }
 .queue-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; flex: none; }
 .queue-head h3 { margin: 0; font-size: 16px; }
 .queue-notice { margin: 0 0 10px; padding: 8px 12px; background: #fff7e0; border: 1px solid #f0d78a; border-radius: 8px; color: #6b4e00; font-size: 14px; flex: none; }
+.queue-empty { margin: 0 0 10px; color: #5b6068; font-size: 14px; flex: none; }
+.queue-tabs { display: flex; gap: 4px; border-bottom: 1px solid #e3e6ea; margin-bottom: 10px; flex: none; }
+.queue-tabs .tab-btn { padding: 8px 4px; margin-right: 16px; font-size: 14px; }
+.queue-pane { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+/* Type/Range filters above the list - independent, purely client-side. */
+.queue-filters { display: flex; gap: 10px; margin-bottom: 10px; flex: none; }
+.queue-filters label { flex: 1; display: grid; gap: 2px; font-size: 12px; font-weight: 600; color: #5b6068; min-width: 0; }
+.queue-filters select { padding: 7px 8px; font-size: 13px; font-weight: 400; border: 1px solid #c8ccd2; border-radius: 6px; background: #fff; color: #1b1d21; }
+.queue-filters select:focus { outline: 2px solid #3b6cf6; border-color: #3b6cf6; }
 .queue-list { list-style: none; margin: 0; padding: 0 2px 2px 0; display: grid; gap: 10px; align-content: start; flex: 1; min-height: 0; overflow-y: auto; }
 .qrow { background: #fff; border: 1px solid #dfe2e6; border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.qrow.filtered-out { display: none; }
 .qtop { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .qtitle { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qbuttons { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -159,7 +170,9 @@ button.small { padding: 6px 12px; font-size: 13px; }
 .qdone { margin-top: 8px; font-size: 14px; color: #17663a; font-weight: 600; word-break: break-word; }
 .qdone small { display: block; margin-top: 2px; font-weight: 400; color: #5b6068; }
 .qdone .q-open-folder { margin-top: 8px; }
+.qdone .q-gone { display: block; margin-top: 8px; font-size: 13px; font-weight: 400; color: #8a1f1f; }
 .qerror pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 6px 0 0; color: #5b2222; }
+#queue-load-older { margin-top: 10px; flex: none; }
 
 .batch { margin-top: 16px; background: #fff; border: 1px solid #dfe2e6; border-radius: 12px; padding: 12px 16px; }
 .batch-summary { margin: 0 0 8px; font-weight: 600; }
@@ -174,7 +187,7 @@ button.small { padding: 6px 12px; font-size: 13px; }
 .top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
 .top-buttons { display: flex; gap: 8px; flex: none; }
 
-/* ---------- Slide-over drawers (History / Settings) ---------- */
+/* ---------- Slide-over drawer (Settings) ---------- */
 .drawer-backdrop {
   position: fixed;
   inset: 0;
@@ -223,13 +236,6 @@ button.small { padding: 6px 12px; font-size: 13px; }
 .panel-message { margin: 0; font-size: 14px; color: #17663a; }
 .panel-message.problem { color: #8a1f1f; }
 
-.history-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
-.hrow { background: #fafbfc; border: 1px solid #dfe2e6; border-radius: 10px; padding: 10px 12px; }
-.htitle { font-weight: 600; word-break: break-word; }
-.hmeta { margin-top: 2px; font-size: 13px; color: #5b6068; }
-.hbottom { margin-top: 8px; }
-.hgone { font-size: 13px; color: #8a1f1f; }
-
 @media (max-width: 560px) {
   .top-row { flex-wrap: wrap; }
   .folder-row { flex-wrap: wrap; }
@@ -237,4 +243,5 @@ button.small { padding: 6px 12px; font-size: 13px; }
   .card img { width: 100%; max-width: 100%; }
   .link-row { flex-wrap: wrap; }
   .panel.drawer { width: 100vw; }
+  .queue-filters { flex-wrap: wrap; }
 }

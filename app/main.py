@@ -30,6 +30,10 @@ async def lifespan(app):
 app = FastAPI(title="Video Downloader for Editors", lifespan=lifespan)
 _browse_lock = threading.Lock()   # only one folder-picker dialog at a time
 
+# Limits for GET /api/history's paging (mirrors the pattern used for settings' own limits).
+HISTORY_DEFAULT_LIMIT = 50
+HISTORY_MAX_LIMIT = 200
+
 
 class InfoRequest(BaseModel):
     url: str
@@ -150,16 +154,19 @@ def settings_put(request: SettingsUpdate):
 
 
 @app.get("/api/history")
-def history_list():
-    """Past finished downloads, newest first. Each entry says whether its file is still there."""
-    return {"history": history.list_entries()}
+def history_list(limit: int = HISTORY_DEFAULT_LIMIT, offset: int = 0):
+    """Past finished downloads, newest first, paged. Each entry says whether its file is still
+    there. 'total' is the full history count, so the page can offer a "Load older" control."""
+    limit = max(1, min(HISTORY_MAX_LIMIT, limit))
+    offset = max(0, offset)
+    return {"history": history.list_entries(limit=limit, offset=offset), "total": history.count_entries()}
 
 
 @app.delete("/api/history")
 def history_clear():
     """Empties the history list. The downloaded files themselves are never touched."""
     history.clear_history()
-    return {"history": []}
+    return {"history": [], "total": 0}
 
 
 class FolderRequest(BaseModel):

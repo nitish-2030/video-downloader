@@ -47,17 +47,33 @@ def _read_file():
     return entries if isinstance(entries, list) else []
 
 
-def add_entry(*, title, url, platform_name, preset_summary, path, finished_at=None):
+def add_entry(*, title, url, platform_name, preset_summary, path, preset_id=None, content=None,
+             section=None, job_id=None, finished_at=None):
     """Records one finished download. Newest entries are kept first; only the last MAX_ENTRIES stay.
 
     path may point at a file that no longer exists (moved or deleted by the editor) - that's fine,
     the entry is still useful for "what did I download and from where". list_entries() flags this.
+
+    preset_id: the raw preset id used (e.g. "premiere", "broll", "audio", "original"), or "custom"
+    for a one-off Custom-options download - not the display label. See app/presets.py for the ids.
+    content: the raw content type ("video_audio", "video_only", "audio_only"), so the page can
+    filter on it directly (this matters for "audio_only", which several presets can produce).
+    section: None for the whole video, or the plan_section()-shaped dict (start/end/padded_start/
+    padded_end) for a section download - the same shape the frontend already knows how to format.
+    job_id: the queue job id that produced this entry, if known at write time. Lets the page match
+    a job that is still visible in the (session-only) queue to its permanent history entry, so it
+    is shown once instead of twice. None for entries where this isn't available (the page falls
+    back to matching by link instead).
     """
     entry = {
         "title": title or "",
         "url": url,
         "platform": platform_name,
         "preset": preset_summary or "",
+        "preset_id": preset_id,
+        "content": content,
+        "section": section,
+        "job_id": job_id,
         "path": path,
         "finished_at": finished_at or datetime.now().isoformat(timespec="seconds"),
     }
@@ -69,13 +85,28 @@ def add_entry(*, title, url, platform_name, preset_summary, path, finished_at=No
     return entry
 
 
-def list_entries():
-    """All entries, newest first, each with a 'file_exists' flag for whether the file is still there."""
+def list_entries(limit=None, offset=0):
+    """Entries, newest first, each with a 'file_exists' flag for whether the file is still there.
+
+    limit/offset page through the stored list; both default to "everything" (limit=None, offset=0),
+    so existing callers that just want the full list (like open_folder's known-paths check) are
+    unaffected. Use count_entries() alongside this for the total, e.g. for a "Load older" control.
+    """
     with _lock:
         entries = _read_file()
+    if offset:
+        entries = entries[offset:]
+    if limit is not None:
+        entries = entries[:limit]
     for entry in entries:
         entry["file_exists"] = bool(entry.get("path")) and os.path.exists(entry["path"])
     return entries
+
+
+def count_entries():
+    """How many history entries exist in total (ignoring any limit/offset)."""
+    with _lock:
+        return len(_read_file())
 
 
 def clear_history():
