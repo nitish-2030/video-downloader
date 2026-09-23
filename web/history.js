@@ -1,15 +1,14 @@
-// history.js - the History panel: past finished downloads, "Open folder", "Clear history".
-// app.js just opens/closes the panel; everything else happens here.
+// history.js - the History drawer: past finished downloads, "Open folder", "Clear history".
+// app.js just opens/closes it; everything else happens here.
 const historyView = (() => {
   const box = document.getElementById("history-panel");
   const toggle = document.getElementById("history-toggle");
+  const closeButton = document.getElementById("history-close");
   const list = document.getElementById("history-list");
   const empty = document.getElementById("history-empty");
   const clearButton = document.getElementById("history-clear");
   const message = document.getElementById("history-message");
 
-  const show = (element) => element.classList.remove("hidden");
-  const hide = (element) => element.classList.add("hidden");
   const setShown = (element, visible) => element.classList.toggle("hidden", !visible);
 
   function formatWhen(isoText) {
@@ -60,11 +59,17 @@ const historyView = (() => {
     return row;
   }
 
+  // Newest download first, oldest at the bottom - regardless of what order the server sent them in.
+  function sortNewestFirst(entries) {
+    return [...entries].sort((a, b) => new Date(b.finished_at) - new Date(a.finished_at));
+  }
+
   function render(entries) {
+    const sorted = sortNewestFirst(entries);
     list.innerHTML = "";
-    setShown(empty, entries.length === 0);
-    setShown(clearButton, entries.length > 0);
-    for (const entry of entries) { list.appendChild(buildRow(entry)); }
+    setShown(empty, sorted.length === 0);
+    setShown(clearButton, sorted.length > 0);
+    for (const entry of sorted) { list.appendChild(buildRow(entry)); }
   }
 
   async function load() {
@@ -116,13 +121,19 @@ const historyView = (() => {
 
   clearButton.addEventListener("click", clearHistory);
 
+  function isOpen() {
+    return box.classList.contains("open");
+  }
+
   function setOpen(open) {
-    setShown(box, open);
+    box.classList.toggle("open", open);
     toggle.setAttribute("aria-pressed", String(open));
+    if (window.updateDrawerBackdrop) { window.updateDrawerBackdrop(); }
     if (open) { load(); }
   }
 
-  toggle.addEventListener("click", () => setOpen(box.classList.contains("hidden")));
+  toggle.addEventListener("click", () => setOpen(!isOpen()));
+  closeButton.addEventListener("click", () => setOpen(false));
 
   return { close: () => setOpen(false) };
 })();

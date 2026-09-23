@@ -2,6 +2,7 @@
 // app.js calls setInfo() for a new link, read() when Download is pressed, and clock() to show times.
 const sectionMode = (() => {
   const fields = document.getElementById("section-fields");
+  const hintBox = document.getElementById("section-hint");
   const startInput = document.getElementById("s-start");
   const endInput = document.getElementById("s-end");
   const extraInput = document.getElementById("s-extra");
@@ -34,8 +35,10 @@ const sectionMode = (() => {
   }
 
   function update() {
-    fields.classList.toggle("hidden", !isOn());
-    if (changeListener) { changeListener(isOn()); }
+    const on = isOn();
+    fields.classList.toggle("hidden", !on);
+    hintBox.classList.toggle("hidden", !on);
+    if (changeListener) { changeListener(on); }
   }
 
   // A new link was checked: start again with the full video and empty times.

@@ -237,7 +237,6 @@ function downloadLabel() {
 
 function applyMode() {
   const custom = customMode.isOpen();
-  chooser.classList.toggle("custom-on", custom);
   const preset = presets.find((item) => item.id === selectedPreset);
   const range = mode === "batch" ? "Full videos" : (sectionMode.isOn() ? "Only the section" : "Full video");
   if (custom) {
@@ -307,6 +306,7 @@ async function loadPresets() {
 // ---------- Adding a download to the queue ----------
 
 let sending = false;   // true while the request to add a download is on its way
+let lastDownloadSignature = null;   // the last {url, preset/custom, section} actually sent
 
 async function startBatchDownload() {
   const useCustom = customMode.isOpen();
@@ -385,6 +385,14 @@ async function startDownload() {
     : { url: checkedUrl, preset: selectedPreset };
   if (range.section) { request.section = range.section; }
 
+  // Same link + same preset/custom choice + same section as the last download you sent?
+  // Ask first - repeated clicks on a genuinely different choice never get interrupted.
+  const signature = JSON.stringify(request);
+  if (signature === lastDownloadSignature) {
+    const proceed = window.confirm("This download was just added. Do you want to download it again?");
+    if (!proceed) { return; }
+  }
+
   sending = true;
   applyMode();
   try {
@@ -399,6 +407,7 @@ async function startDownload() {
       showError(detail.friendly || "Something went wrong. Please try again.", detail.details || "", detail.action);
       return;
     }
+    lastDownloadSignature = signature;
     await queueView.refreshNow();   // the new download shows up in the list right away
     queueView.reveal();
   } catch (error) {
@@ -435,9 +444,33 @@ settingsView.onDefaultPresetSaved(applyDefaultPreset);
 queueView.start({ onError: showError });
 loadPresets();
 
-// ---------- History / Settings: only one open at a time ----------
+// ---------- History / Settings: slide-over drawers, only one open at a time ----------
 
 const historyToggle = document.getElementById("history-toggle");
 const settingsToggle = document.getElementById("settings-toggle");
+const drawerBackdrop = document.getElementById("drawer-backdrop");
+const historyPanel = document.getElementById("history-panel");
+const settingsPanel = document.getElementById("settings-panel");
+
 historyToggle.addEventListener("click", () => settingsView.close());
 settingsToggle.addEventListener("click", () => historyView.close());
+
+// Recomputed from the drawers' actual state (rather than tracked separately) so it stays correct
+// no matter which order the open/close calls above run in.
+window.updateDrawerBackdrop = function updateDrawerBackdrop() {
+  const anyOpen = historyPanel.classList.contains("open") || settingsPanel.classList.contains("open");
+  drawerBackdrop.classList.toggle("open", anyOpen);
+  document.body.classList.toggle("drawer-open", anyOpen);
+};
+
+drawerBackdrop.addEventListener("click", () => {
+  historyView.close();
+  settingsView.close();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    historyView.close();
+    settingsView.close();
+  }
+});

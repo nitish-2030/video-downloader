@@ -1,5 +1,6 @@
-// queue.js - the "Downloads" list. It shows every job, keeps it up to date while the tool works,
-// and handles the Cancel / Retry / Remove / Clear finished buttons. app.js starts it with queueView.start().
+// queue.js - the "Downloads" list, now docked in the right-hand sidebar. It shows every job,
+// keeps it up to date while the tool works, and handles Cancel / Retry / Remove / Open folder /
+// Clear finished. app.js starts it with queueView.start().
 const queueView = (() => {
   const box = document.getElementById("queue");
   const list = document.getElementById("queue-list");
@@ -91,7 +92,11 @@ const queueView = (() => {
       <div class="qmeta"></div>
       <div class="qstatus"></div>
       <div class="bar"><div class="bar-fill"></div></div>
-      <div class="qdone hidden"></div>
+      <span class="spinner hidden" aria-hidden="true"></span>
+      <div class="qdone hidden">
+        <div class="qdone-text"></div>
+        <button type="button" class="small secondary q-open-folder hidden">Open folder</button>
+      </div>
       <div class="qerror hidden">
         <button type="button" class="small secondary q-action hidden">Open Settings</button>
         <button type="button" class="link-button q-toggle hidden">Show details</button>
@@ -100,7 +105,8 @@ const queueView = (() => {
     const find = (selector) => row.querySelector(selector);
     row.refs = {
       title: find(".qtitle"), meta: find(".qmeta"), status: find(".qstatus"),
-      bar: find(".bar"), fill: find(".bar-fill"), done: find(".qdone"),
+      bar: find(".bar"), fill: find(".bar-fill"), spinner: find(".spinner"), done: find(".qdone"),
+      doneText: find(".qdone-text"), openFolder: find(".q-open-folder"),
       errorBox: find(".qerror"), toggle: find(".q-toggle"), details: find(".qdetails"),
       action: find(".q-action"),
       cancel: find(".q-cancel"), retry: find(".q-retry"), remove: find(".q-remove"),
@@ -109,12 +115,50 @@ const queueView = (() => {
     row.refs.retry.addEventListener("click", () => act("POST", `/api/jobs/${id}/retry`));
     row.refs.remove.addEventListener("click", () => act("DELETE", `/api/jobs/${id}`));
     row.refs.action.addEventListener("click", () => { settingsView.openForSignIn(); });
+    row.refs.openFolder.addEventListener("click", () => openFolder(row.refs.openFolder.dataset.path, row.refs.openFolder));
     row.refs.toggle.addEventListener("click", () => {
       const opening = row.refs.details.classList.contains("hidden");
       setShown(row.refs.details, opening);
       row.refs.toggle.textContent = opening ? "Hide details" : "Show details";
     });
     return row;
+  }
+
+  // Works out the best path to hand to /api/history/open-folder for a finished job.
+  // Prefers an explicit path field if the backend sends one (matching how History entries work);
+  // otherwise builds a full file path from the folder + filename, since a bare folder string is
+  // what didn't work before.
+  function pathForJob(job) {
+    if (job.path) { return job.path; }
+    if (job.file_path) { return job.file_path; }
+    if (job.folder && job.file) {
+      const sep = job.folder.includes("\\") ? "\\" : "/";
+      const folder = job.folder.replace(/[\\/]+$/, "");
+      return `${folder}${sep}${job.file}`;
+    }
+    return job.folder;
+  }
+
+  // Opens the folder a finished download was saved to - same endpoint History uses.
+  async function openFolder(path, button) {
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/history/open-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const detail = data.detail || {};
+        const friendly = detail.friendly || "I couldn't open that folder.";
+        onError(`${friendly} (path tried: ${path})`, detail.details || "", detail.action);
+      }
+    } catch (error) {
+      onError(`I couldn't reach the tool. Is it still running? (path tried: ${path})`, String(error));
+    } finally {
+      button.disabled = false;
+    }
   }
 
   function updateRow(row, job, ahead) {
@@ -132,8 +176,9 @@ const queueView = (() => {
     refs.meta.textContent = meta.join(" · ");
 
     refs.status.textContent = progress.text;
-    setShown(refs.bar, !progress.hideBar);
-    refs.bar.classList.toggle("indeterminate", progress.value === null);
+    const indeterminate = !progress.hideBar && progress.value === null;
+    setShown(refs.bar, !progress.hideBar && !indeterminate);
+    setShown(refs.spinner, indeterminate);
     refs.fill.style.width = progress.value === null ? "" : `${Math.max(0, Math.min(100, progress.value))}%`;
 
     const active = ["queued", "downloading", "converting"].includes(job.status);
@@ -143,13 +188,16 @@ const queueView = (() => {
     setShown(refs.remove, !active);
 
     if (job.status === "done") {
-      refs.done.textContent = `Saved as ${job.file}`;
+      refs.doneText.textContent = `Saved as ${job.file}`;
       const where = document.createElement("small");
       where.textContent = `In the folder: ${job.folder}`;
-      refs.done.appendChild(where);
+      refs.doneText.appendChild(where);
+      refs.openFolder.dataset.path = pathForJob(job);
+      show(refs.openFolder);
       show(refs.done);
     } else {
       hide(refs.done);
+      hide(refs.openFolder);
     }
 
     if (job.status === "error") {
@@ -176,13 +224,22 @@ const queueView = (() => {
       if (!wanted.has(row.dataset.id)) { row.remove(); trackers.delete(row.dataset.id); }
     }
 
-    let ahead = 0;   // jobs in front of this one that are waiting or running
-    jobs.forEach((job, index) => {
+    // "Ahead in queue" reflects processing order (the order the server added jobs in),
+    // which is NOT the order we display them in - so it's worked out first, separately.
+    const aheadById = new Map();
+    let ahead = 0;
+    for (const job of jobs) {
+      aheadById.set(job.id, ahead);
+      if (["queued", "downloading", "converting"].includes(job.status)) { ahead += 1; }
+    }
+
+    // Newest download first, oldest at the bottom.
+    const displayOrder = [...jobs].reverse();
+    displayOrder.forEach((job, index) => {
       let row = list.querySelector(`[data-id="${job.id}"]`);
       if (!row) { row = buildRow(job.id); }
-      updateRow(row, job, ahead);
+      updateRow(row, job, aheadById.get(job.id));
       if (list.children[index] !== row) { list.insertBefore(row, list.children[index] || null); }
-      if (["queued", "downloading", "converting"].includes(job.status)) { ahead += 1; }
     });
 
     setShown(clearButton, jobs.some((job) => job.status === "done" || job.status === "canceled"));

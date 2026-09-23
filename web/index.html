@@ -7,168 +7,190 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main>
-    <div class="top-row">
-      <div>
-        <h1>Video Downloader</h1>
-        <p class="subtitle">Paste a YouTube or X link (or several, one per line) to get started.</p>
-      </div>
-      <div class="top-buttons">
-        <button id="history-toggle" type="button" class="secondary" aria-pressed="false">History</button>
-        <button id="settings-toggle" type="button" class="secondary" aria-pressed="false">Settings</button>
-      </div>
-    </div>
-
-    <section id="history-panel" class="panel hidden">
-      <div class="panel-head">
-        <h3>History</h3>
-        <button id="history-clear" type="button" class="link-button hidden">Clear history</button>
-      </div>
-      <p id="history-empty" class="hint">Nothing downloaded yet.</p>
-      <p id="history-message" class="panel-message hidden"></p>
-      <ul id="history-list" class="history-list"></ul>
-    </section>
-
-    <section id="settings-panel" class="panel hidden">
-      <h3>Settings</h3>
-      <label>Save videos in
-        <div class="folder-row">
-          <input id="st-folder" type="text" autocomplete="off" spellcheck="false">
-          <button id="st-browse" type="button" class="secondary">Browse...</button>
+  <div class="app-shell">
+    <main class="workspace">
+      <div class="top-row">
+        <div>
+          <h1>Video Downloader</h1>
+          <p class="subtitle">Paste a YouTube or X link (or several, one per line) to get started.</p>
         </div>
-      </label>
-      <label>Default preset
-        <select id="st-default-preset"></select>
-      </label>
-      <label>Extra seconds on each side of a section (default)
-        <input id="st-extra" type="number" min="0" step="0.5">
-      </label>
-      <label>Downloads at once
-        <input id="st-parallel" type="number" min="1" max="4" step="1">
-      </label>
-      <div id="st-cookies-section">
-        <label>Sign in for restricted videos (age-restricted, members-only, private)
-          <div class="folder-row">
-            <input id="st-cookies-file" type="text" autocomplete="off" spellcheck="false"
-                   placeholder="e.g. C:\Users\you\Downloads\youtube.com_cookies.txt">
-            <button id="st-cookies-browse" type="button" class="secondary">Browse...</button>
-          </div>
-        </label>
-        <button id="cookies-help-toggle" type="button" class="link-button">How do I get this file?</button>
-        <div id="cookies-help" class="hint-box hidden">
-          <ol>
-            <li>In your browser, install the extension called <strong>"Get cookies.txt LOCALLY"</strong>
-              (search your browser's extension store for that exact name).</li>
-            <li>Go to <strong>youtube.com</strong>, signed in to the account you want to use.</li>
-            <li>Click the extension's icon and choose <strong>Export</strong>. It saves a file for
-              you, usually into your Downloads folder.</li>
-            <li>The saved file's name doesn't matter — it depends on the site and can come out as
-              something like <code>youtube.com_cookies.txt</code>, not always plain "cookies.txt".
-              You don't need to rename it: just click <strong>Browse...</strong> above and pick
-              whatever file it saved.</li>
-          </ol>
-          <p class="hint">If a restricted video stops working later, your sign-in has likely
-            expired — export a fresh file the same way and Browse to it again.</p>
+        <div class="top-buttons">
+          <button id="history-toggle" type="button" class="secondary" aria-pressed="false">History</button>
+          <button id="settings-toggle" type="button" class="secondary" aria-pressed="false">Settings</button>
         </div>
       </div>
-      <div class="panel-actions">
-        <button id="st-save" type="button">Save settings</button>
-        <p id="st-message" class="panel-message hidden"></p>
+
+      <div class="link-row">
+        <textarea id="link" rows="1" placeholder="Paste a link here (or many links, one per line)" autocomplete="off" spellcheck="false"></textarea>
+        <button id="paste" type="button" class="secondary">Paste</button>
+        <button id="check" type="button">Check link</button>
       </div>
-      <hr>
-      <div class="panel-actions">
-        <button id="st-check-update" type="button" class="secondary">Check for engine update</button>
-        <button id="st-update-now" type="button" class="hidden">Update now</button>
-        <p id="st-update-message" class="panel-message hidden"></p>
+
+      <section id="batch" class="batch hidden">
+        <p id="batch-summary" class="batch-summary"></p>
+        <ul id="batch-list" class="batch-list"></ul>
+      </section>
+      <p id="batch-note" class="batch-note hidden"></p>
+
+      <div id="loading" class="loading hidden">Looking up your video...</div>
+
+      <div id="error" class="error hidden">
+        <p id="error-message"></p>
+        <button id="error-action" type="button" class="secondary hidden">Open Settings</button>
+        <button id="details-toggle" type="button" class="link-button hidden">Show details</button>
+        <pre id="error-details" class="hidden"></pre>
       </div>
-    </section>
 
-    <div class="link-row">
-      <textarea id="link" rows="1" placeholder="Paste a link here (or many links, one per line)" autocomplete="off" spellcheck="false"></textarea>
-      <button id="paste" type="button" class="secondary">Paste</button>
-      <button id="check" type="button">Check link</button>
-    </div>
-
-    <section id="batch" class="batch hidden">
-      <p id="batch-summary" class="batch-summary"></p>
-      <ul id="batch-list" class="batch-list"></ul>
-    </section>
-    <p id="batch-note" class="batch-note hidden"></p>
-
-    <div id="loading" class="loading hidden">Looking up your video...</div>
-
-    <div id="error" class="error hidden">
-      <p id="error-message"></p>
-      <button id="error-action" type="button" class="secondary hidden">Open Settings</button>
-      <button id="details-toggle" type="button" class="link-button hidden">Show details</button>
-      <pre id="error-details" class="hidden"></pre>
-    </div>
-
-    <div id="card" class="card hidden">
-      <img id="thumb" alt="Video thumbnail">
-      <div class="card-text">
-        <h2 id="title"></h2>
-        <p id="uploader"></p>
-        <p class="meta"><span id="platform"></span> &middot; <span id="duration"></span> &middot; <span id="quality"></span></p>
+      <div id="card" class="card hidden">
+        <img id="thumb" alt="Video thumbnail">
+        <div class="card-text">
+          <h2 id="title"></h2>
+          <p id="uploader"></p>
+          <p class="meta"><span id="platform"></span> &middot; <span id="duration"></span> &middot; <span id="quality"></span></p>
+        </div>
       </div>
-    </div>
 
-    <section id="chooser" class="chooser hidden">
-      <h3>What do you need?</h3>
-      <div id="preset-list" class="preset-list"></div>
+      <section id="chooser" class="chooser hidden">
+        <div class="chooser-tabs" role="tablist">
+          <button id="tab-quick" type="button" class="tab-btn active" role="tab" aria-selected="true">What do you need?</button>
+          <button id="tab-custom" type="button" class="tab-btn" role="tab" aria-selected="false">Custom options</button>
+        </div>
+
+        <div class="tab-content">
+          <div id="quick-pane" class="tab-pane">
+            <div id="preset-list" class="preset-list"></div>
             <p id="preset-warning" class="warning hidden"></p>
+          </div>
 
-      <button id="custom-toggle" type="button" class="link-button custom-toggle">Show custom options</button>
-      <div id="custom-panel" class="custom hidden">
-        <label>What do you need
-          <select id="c-content"></select>
-        </label>
-        <label id="c-quality-row">Quality
-          <select id="c-quality"></select>
-        </label>
-        <p id="c-result" class="hint hidden"></p>
-        <label id="c-format-row">Format
-          <select id="c-format"></select>
-        </label>
-        <label id="c-audio-row" class="hidden">Audio type
-          <select id="c-audio"></select>
-        </label>
-        <p id="c-warning" class="warning hidden"></p>
-      </div>
-
-      <fieldset id="timeline" class="timeline">
-        <legend>How much of the video?</legend>
-        <label class="choice"><input type="radio" name="range" value="full" checked> Full video</label>
-        <label class="choice"><input type="radio" name="range" value="section"> Only a section</label>
-        <div id="section-fields" class="section-fields hidden">
-          <label>Start
-            <input id="s-start" type="text" placeholder="0:00" autocomplete="off" spellcheck="false">
-          </label>
-          <label>End
-            <input id="s-end" type="text" placeholder="1:45" autocomplete="off" spellcheck="false">
-          </label>
-          <label class="wide">Extra seconds on each side
-            <input id="s-extra" type="number" min="0" step="0.5" value="2">
-          </label>
-          <p class="hint wide">Write times like 1:20, 1:02:30 or 80 (seconds). The extra seconds give you room to trim in your editor. <span id="s-length"></span></p>
+          <div id="custom-panel" class="tab-pane custom hidden">
+            <label>What do you need
+              <select id="c-content"></select>
+            </label>
+            <label id="c-quality-row">Quality
+              <select id="c-quality"></select>
+            </label>
+            <p id="c-result" class="hint wide hidden"></p>
+            <label id="c-format-row">Format
+              <select id="c-format"></select>
+            </label>
+            <label id="c-audio-row" class="hidden">Audio type
+              <select id="c-audio"></select>
+            </label>
+            <p id="c-warning" class="warning wide hidden"></p>
+          </div>
         </div>
-      </fieldset>
 
-      <p id="mode-note" class="mode-note"></p>
-      <button id="download" type="button">Download</button>
-    </section>
+        <fieldset id="timeline" class="timeline">
+          <legend>How much of the video?</legend>
+          <div class="timeline-row">
+            <label class="choice"><input type="radio" name="range" value="full" checked> Full video</label>
+            <label class="choice"><input type="radio" name="range" value="section"> Only a section</label>
+            <div id="section-fields" class="section-fields hidden">
+              <label class="field">Start
+                <input id="s-start" type="text" placeholder="0:00" autocomplete="off" spellcheck="false">
+              </label>
+              <label class="field">End
+                <input id="s-end" type="text" placeholder="1:45" autocomplete="off" spellcheck="false">
+              </label>
+              <label class="field extra">Extra seconds each side
+                <input id="s-extra" type="number" min="0" step="0.5" value="2">
+              </label>
+            </div>
+          </div>
+          <p id="section-hint" class="hint hidden">Write times like 1:20, 1:02:30 or 80 (seconds). <span id="s-length"></span></p>
+        </fieldset>
 
-    <section id="queue" class="queue hidden">
-      <div class="queue-head">
-        <h3>Downloads</h3>
-        <button id="clear-finished" type="button" class="link-button hidden">Clear finished</button>
+        <p id="mode-note" class="mode-note"></p>
+        <button id="download" type="button">Download</button>
+      </section>
+
+      <p class="note">Only download footage you have the right to use. This is a private tool that runs on your own computer.</p>
+    </main>
+
+    <aside id="queue-sidebar" class="side-panel">
+      <section id="queue" class="queue hidden">
+        <div class="queue-head">
+          <h3>Downloads</h3>
+          <button id="clear-finished" type="button" class="link-button hidden">Clear finished</button>
+        </div>
+        <p id="queue-notice" class="queue-notice hidden"></p>
+        <ul id="queue-list" class="queue-list"></ul>
+      </section>
+    </aside>
+  </div>
+
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+  <section id="history-panel" class="panel drawer">
+    <div class="drawer-header">
+      <h3>History</h3>
+      <div class="drawer-header-actions">
+        <button id="history-clear" type="button" class="link-button hidden">Clear history</button>
+        <button id="history-close" type="button" class="drawer-close" aria-label="Close history">&times;</button>
       </div>
-      <p id="queue-notice" class="queue-notice hidden"></p>
-      <ul id="queue-list" class="queue-list"></ul>
-    </section>
+    </div>
+    <p id="history-empty" class="hint">Nothing downloaded yet.</p>
+    <p id="history-message" class="panel-message hidden"></p>
+    <ul id="history-list" class="history-list"></ul>
+  </section>
 
-    <p class="note">Only download footage you have the right to use. This is a private tool that runs on your own computer.</p>
-  </main>
+  <section id="settings-panel" class="panel drawer">
+    <div class="drawer-header">
+      <h3>Settings</h3>
+      <button id="settings-close" type="button" class="drawer-close" aria-label="Close settings">&times;</button>
+    </div>
+    <label>Save videos in
+      <div class="folder-row">
+        <input id="st-folder" type="text" autocomplete="off" spellcheck="false">
+        <button id="st-browse" type="button" class="secondary">Browse...</button>
+      </div>
+    </label>
+    <label>Default preset
+      <select id="st-default-preset"></select>
+    </label>
+    <label>Extra seconds on each side of a section (default)
+      <input id="st-extra" type="number" min="0" step="0.5">
+    </label>
+    <label>Downloads at once
+      <input id="st-parallel" type="number" min="1" max="4" step="1">
+    </label>
+    <div id="st-cookies-section">
+      <label>Sign in for restricted videos (age-restricted, members-only, private)
+        <div class="folder-row">
+          <input id="st-cookies-file" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="e.g. C:\Users\you\Downloads\youtube.com_cookies.txt">
+          <button id="st-cookies-browse" type="button" class="secondary">Browse...</button>
+        </div>
+      </label>
+      <button id="cookies-help-toggle" type="button" class="link-button">How do I get this file?</button>
+      <div id="cookies-help" class="hint-box hidden">
+        <ol>
+          <li>In your browser, install the extension called <strong>"Get cookies.txt LOCALLY"</strong>
+            (search your browser's extension store for that exact name).</li>
+          <li>Go to <strong>youtube.com</strong>, signed in to the account you want to use.</li>
+          <li>Click the extension's icon and choose <strong>Export</strong>. It saves a file for
+            you, usually into your Downloads folder.</li>
+          <li>The saved file's name doesn't matter — it depends on the site and can come out as
+            something like <code>youtube.com_cookies.txt</code>, not always plain "cookies.txt".
+            You don't need to rename it: just click <strong>Browse...</strong> above and pick
+            whatever file it saved.</li>
+        </ol>
+        <p class="hint">If a restricted video stops working later, your sign-in has likely
+          expired — export a fresh file the same way and Browse to it again.</p>
+      </div>
+    </div>
+    <div class="panel-actions">
+      <button id="st-save" type="button">Save settings</button>
+      <p id="st-message" class="panel-message hidden"></p>
+    </div>
+    <hr>
+    <div class="panel-actions">
+      <button id="st-check-update" type="button" class="secondary">Check for engine update</button>
+      <button id="st-update-now" type="button" class="hidden">Update now</button>
+      <p id="st-update-message" class="panel-message hidden"></p>
+    </div>
+  </section>
+
   <script src="custom.js"></script>
   <script src="section.js"></script>
   <script src="queue.js"></script>

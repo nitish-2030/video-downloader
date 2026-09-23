@@ -1,8 +1,9 @@
-// settings.js - the Settings panel: output folder, default preset, extra seconds, parallel
-// downloads. app.js opens/closes the panel and, once presets are known, calls setPresetOptions().
+// settings.js - the Settings drawer: output folder, default preset, extra seconds, parallel
+// downloads. app.js opens/closes it and, once presets are known, calls setPresetOptions().
 const settingsView = (() => {
   const box = document.getElementById("settings-panel");
   const toggle = document.getElementById("settings-toggle");
+  const closeButton = document.getElementById("settings-close");
   const folderInput = document.getElementById("st-folder");
   const browseButton = document.getElementById("st-browse");
   const presetSelect = document.getElementById("st-default-preset");
@@ -214,13 +215,19 @@ const settingsView = (() => {
 
   cookiesHelpToggle.addEventListener("click", () => setHelpOpen(cookiesHelp.classList.contains("hidden")));
 
+  function isOpen() {
+    return box.classList.contains("open");
+  }
+
   function setOpen(open) {
-    setShown(box, open);
+    box.classList.toggle("open", open);
     toggle.setAttribute("aria-pressed", String(open));
+    if (window.updateDrawerBackdrop) { window.updateDrawerBackdrop(); }
     if (open) { load(); }
   }
 
-  toggle.addEventListener("click", () => setOpen(box.classList.contains("hidden")));
+  toggle.addEventListener("click", () => setOpen(!isOpen()));
+  closeButton.addEventListener("click", () => setOpen(false));
 
   // Called when a download failed because a video needs sign-in: opens Settings, opens the
   // "how do I get this file" help, and draws attention to the cookies.txt field.

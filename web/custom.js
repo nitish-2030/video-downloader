@@ -1,6 +1,11 @@
-// custom.js - the "Custom options" section (the dropdowns). app.js calls setChoices() and setInfo().
+// custom.js - the "Custom options" tab (the dropdowns). app.js calls setChoices() and setInfo().
+// The chooser section has two tabs: "What do you need?" (quick presets, in #quick-pane) and
+// "Custom options" (this panel, in #custom-panel). Only one is shown at a time so opening custom
+// options never grows the page - it swaps in place of the presets instead of stacking under them.
 const customMode = (() => {
-  const toggle = document.getElementById("custom-toggle");
+  const tabQuick = document.getElementById("tab-quick");
+  const tabCustom = document.getElementById("tab-custom");
+  const quickPane = document.getElementById("quick-pane");
   const panel = document.getElementById("custom-panel");
   const contentSelect = document.getElementById("c-content");
   const qualityRow = document.getElementById("c-quality-row");
@@ -12,9 +17,10 @@ const customMode = (() => {
   const audioSelect = document.getElementById("c-audio");
   const warningLine = document.getElementById("c-warning");
 
-  let formats = [];       // video formats from /api/presets (with their warnings)
-  let qualityOptions = []; // from /api/info for the checked link
-  let modeListener = null; // app.js is told when the panel opens or closes
+  let formats = [];        // video formats from /api/presets (with their warnings)
+  let qualityOptions = [];  // from /api/info for the checked link
+  let open = false;         // true while the Custom options tab is the one showing
+  let modeListener = null;  // app.js is told when the tab changes
 
   function fillSelect(select, entries) {
     const before = select.value;
@@ -72,7 +78,7 @@ const customMode = (() => {
     update();
   }
 
-  // What the editor picked (Download uses this while the custom panel is open).
+  // What the editor picked (Download uses this while the Custom options tab is showing).
   function getSelection() {
     return {
       content: contentSelect.value,
@@ -83,16 +89,22 @@ const customMode = (() => {
   }
 
   function isOpen() {
-    return !panel.classList.contains("hidden");
+    return open;
   }
 
-  function setOpen(open) {
+  function setOpen(next) {
+    open = next;
+    tabQuick.classList.toggle("active", !open);
+    tabCustom.classList.toggle("active", open);
+    tabQuick.setAttribute("aria-selected", String(!open));
+    tabCustom.setAttribute("aria-selected", String(open));
+    setVisible(quickPane, !open);
     setVisible(panel, open);
-    toggle.textContent = open ? "Hide custom options" : "Show custom options";
     if (modeListener) { modeListener(open); }
   }
 
-  toggle.addEventListener("click", () => setOpen(!isOpen()));
+  tabQuick.addEventListener("click", () => setOpen(false));
+  tabCustom.addEventListener("click", () => setOpen(true));
   for (const select of [contentSelect, qualitySelect, formatSelect, audioSelect]) {
     select.addEventListener("change", update);
   }
@@ -101,7 +113,7 @@ const customMode = (() => {
     setChoices,
     setInfo,
     getSelection,
-    isOpen,                                   // true while the custom panel is open (Download uses it)
+    isOpen,                                   // true while the Custom options tab is showing (Download uses it)
     close: () => { if (isOpen()) { setOpen(false); } },
     onModeChange: (listener) => { modeListener = listener; },
   };
