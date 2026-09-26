@@ -88,4 +88,5 @@ with tempfile.TemporaryDirectory() as temp:
 
 print()
 print("ALL PASSED" if not failures else f"{len(failures)} FAILED: {failures}")
-raise SystemExit(1 if failures else 0)
+if __name__ == "__main__":
+    raise SystemExit(1 if failures else 0)

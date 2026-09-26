@@ -204,4 +204,5 @@ check("queue leaves no working folder", not (out11 / "_working").exists())
 shutil.rmtree(temp, ignore_errors=True)
 print()
 print("ALL PASSED" if not failures else f"{len(failures)} FAILED: {failures}")
-raise SystemExit(1 if failures else 0)
+if __name__ == "__main__":
+    raise SystemExit(1 if failures else 0)

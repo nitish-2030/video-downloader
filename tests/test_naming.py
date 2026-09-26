@@ -129,4 +129,5 @@ same("source-info file name", naming.sidecar_path("a/Clip [id].mp4"), "a/Clip [i
 
 print()
 print("ALL PASSED" if not failures else f"{len(failures)} FAILED: {failures}")
-raise SystemExit(1 if failures else 0)
+if __name__ == "__main__":
+    raise SystemExit(1 if failures else 0)

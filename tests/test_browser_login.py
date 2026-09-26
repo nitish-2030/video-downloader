@@ -301,4 +301,5 @@ finally:
     settings.update_settings({"cookies_file": ""})
 
 print(f"\n{passed} passed, {failed} failed out of {passed + failed}")
-sys.exit(1 if failed else 0)
+if __name__ == "__main__":
+    sys.exit(1 if failed else 0)
