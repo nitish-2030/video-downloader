@@ -5,12 +5,8 @@ __pycache__/
 
 # Downloaded / converted media and test output
 downloads/
-test_presets_out/
 phase1/
-test_downloads/
-test_out/
-test_conv/
-test_final/
+test_*/
 *.mp4
 *.mkv
 *.mov
