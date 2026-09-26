@@ -381,3 +381,37 @@ def job_status(job_id: str):
 # The page itself. This must stay LAST so it never hides the /api routes above.
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
+# --- Runner: lets "python -m app.main" start the server and open the browser. ---
+
+def _find_free_port(preferred=8756):
+    """Tries the preferred port first, falls back to any free port if it's taken."""
+    import socket
+    for port in (preferred, 0):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(("127.0.0.1", port))
+                return sock.getsockname()[1]
+            except OSError:
+                continue
+    raise RuntimeError("Could not find a free port")
+
+
+def main():
+    import webbrowser
+    import uvicorn
+
+    port = _find_free_port()
+    url = f"http://127.0.0.1:{port}"
+
+    def _open_browser():
+        time.sleep(1.0)  # give uvicorn a moment to start listening
+        webbrowser.open(url)
+
+    threading.Thread(target=_open_browser, daemon=True).start()
+
+    print(f"Video Downloader for Editors is running at {url}")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+
+
+if __name__ == "__main__":
+    main()
