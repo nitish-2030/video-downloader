@@ -255,6 +255,16 @@ function applyMode() {
   downloadButton.disabled = sending || (mode === "batch" && supportedLinks.length === 0);
 }
 
+// Icon per preset id - just enough visual distinction that the cards aren't all identical.
+// "custom"/unknown ids (there shouldn't be any from /api/presets) fall back to no icon.
+const PRESET_ICONS = {
+  premiere: "film",
+  after_effects: "layers",
+  broll: "volumeX",
+  audio: "headphones",
+  original: "package",
+};
+
 function renderPresets(defaultId) {
   presetList.innerHTML = "";
   for (const preset of presets) {
@@ -262,11 +272,16 @@ function renderPresets(defaultId) {
     button.type = "button";
     button.className = "preset";
     button.dataset.id = preset.id;
+    const head = document.createElement("div");
+    head.className = "preset-head";
+    const iconName = PRESET_ICONS[preset.id];
+    if (iconName) { head.innerHTML = Icons.svg(iconName); }
     const name = document.createElement("strong");
     name.textContent = preset.name;
+    head.appendChild(name);
     const description = document.createElement("span");
     description.textContent = preset.description;
-    button.append(name, description);
+    button.append(head, description);
     button.addEventListener("click", () => { customMode.close(); selectPreset(preset.id); });
     presetList.appendChild(button);
   }

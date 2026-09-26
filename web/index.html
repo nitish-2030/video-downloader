@@ -4,122 +4,188 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Video Downloader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="1" y="1" width="22" height="22" rx="7" fill="currentColor"></rect>
+          <path d="M9.5 7.5v9l7-4.5z" style="fill:var(--bg)"></path>
+        </svg>
+      </span>
+      <span class="brand-name">Video <strong>Downloader</strong></span>
+    </div>
+    <button id="settings-toggle" type="button" class="icon-btn" aria-pressed="false" title="Settings" aria-label="Settings">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"></line><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><line x1="4" y1="12" x2="20" y2="12"></line><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><line x1="4" y1="18" x2="20" y2="18"></line><circle cx="11" cy="18" r="2" fill="currentColor" stroke="none"></circle></svg>
+    </button>
+  </header>
+
   <div class="app-shell">
     <main class="workspace">
-      <div class="top-row">
-        <div>
-          <h1>Video Downloader</h1>
-          <p class="subtitle">Paste a YouTube or X link (or several, one per line) to get started.</p>
-        </div>
-        <div class="top-buttons">
-          <button id="settings-toggle" type="button" class="secondary" aria-pressed="false">Settings</button>
-        </div>
-      </div>
-
-      <div class="link-row">
-        <textarea id="link" rows="1" placeholder="Paste a link here (or many links, one per line)" autocomplete="off" spellcheck="false"></textarea>
-        <button id="paste" type="button" class="secondary">Paste</button>
-        <button id="check" type="button">Check link</button>
-      </div>
-
-      <section id="batch" class="batch hidden">
-        <p id="batch-summary" class="batch-summary"></p>
-        <ul id="batch-list" class="batch-list"></ul>
-      </section>
-      <p id="batch-note" class="batch-note hidden"></p>
-
-      <div id="loading" class="loading hidden">Looking up your video...</div>
-
-      <div id="error" class="error hidden">
-        <p id="error-message"></p>
-        <button id="error-action" type="button" class="secondary hidden">Open Settings</button>
-        <button id="details-toggle" type="button" class="link-button hidden">Show details</button>
-        <pre id="error-details" class="hidden"></pre>
-      </div>
-
-      <div id="card" class="card hidden">
-        <img id="thumb" alt="Video thumbnail">
-        <div class="card-text">
-          <h2 id="title"></h2>
-          <p id="uploader"></p>
-          <p class="meta"><span id="platform"></span> &middot; <span id="duration"></span> &middot; <span id="quality"></span></p>
-        </div>
-      </div>
-
-      <section id="chooser" class="chooser hidden">
-        <div class="chooser-tabs" role="tablist">
-          <button id="tab-quick" type="button" class="tab-btn active" role="tab" aria-selected="true">What do you need?</button>
-          <button id="tab-custom" type="button" class="tab-btn" role="tab" aria-selected="false">Custom options</button>
-        </div>
-
-        <div class="tab-content">
-          <div id="quick-pane" class="tab-pane">
-            <div id="preset-list" class="preset-list"></div>
-            <p id="preset-warning" class="warning hidden"></p>
+      <section class="hero-card">
+        <div class="hero-top">
+          <div class="hero-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor"></rect>
+              <path d="M9 7.5v9l7-4.5z" style="fill:var(--bg)"></path>
+            </svg>
           </div>
-
-          <div id="custom-panel" class="tab-pane custom hidden">
-            <label>What do you need
-              <select id="c-content"></select>
-            </label>
-            <label id="c-quality-row">Quality
-              <select id="c-quality"></select>
-            </label>
-            <p id="c-result" class="hint wide hidden"></p>
-            <label id="c-format-row">Format
-              <select id="c-format"></select>
-            </label>
-            <label id="c-audio-row" class="hidden">Audio type
-              <select id="c-audio"></select>
-            </label>
-            <p id="c-warning" class="warning wide hidden"></p>
+          <div>
+            <h1>Video <span class="accent-text">Downloader</span></h1>
+            <p class="subtitle">Paste a YouTube or X link (or several, one per line) to get started.</p>
           </div>
         </div>
 
-        <fieldset id="timeline" class="timeline">
-          <legend>How much of the video?</legend>
-          <div class="timeline-row">
-            <label class="choice"><input type="radio" name="range" value="full" checked> Full video</label>
-            <label class="choice"><input type="radio" name="range" value="section"> Only a section</label>
-            <div id="section-fields" class="section-fields hidden">
-              <label class="field">Start
-                <input id="s-start" type="text" placeholder="0:00" autocomplete="off" spellcheck="false">
+        <div class="link-row">
+          <div class="link-field">
+            <svg class="link-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15 15 9"></path><path d="M10.5 6.5 12 5a3.5 3.5 0 0 1 5 5l-1.5 1.5"></path><path d="M13.5 17.5 12 19a3.5 3.5 0 0 1-5-5l1.5-1.5"></path></svg>
+            <textarea id="link" rows="1" placeholder="Paste a link here (or many links, one per line)" autocomplete="off" spellcheck="false"></textarea>
+          </div>
+          <button id="paste" type="button" class="secondary">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"></rect><rect x="9" y="2" width="6" height="4" rx="1"></rect></svg>
+            Paste
+          </button>
+          <button id="check" type="button">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><line x1="20" y1="20" x2="15.3" y2="15.3"></line></svg>
+            Check link
+          </button>
+        </div>
+
+        <section id="batch" class="batch hidden">
+          <p id="batch-summary" class="batch-summary"></p>
+          <ul id="batch-list" class="batch-list"></ul>
+        </section>
+        <p id="batch-note" class="batch-note hidden"></p>
+
+        <div id="loading" class="loading hidden">Looking up your video...</div>
+
+        <div id="error" class="error hidden">
+          <p id="error-message"></p>
+          <button id="error-action" type="button" class="secondary hidden">Open Settings</button>
+          <button id="details-toggle" type="button" class="link-button hidden">Show details</button>
+          <pre id="error-details" class="hidden"></pre>
+        </div>
+
+        <div id="card" class="card hidden">
+          <img id="thumb" alt="Video thumbnail">
+          <div class="card-text">
+            <h2 id="title"></h2>
+            <p id="uploader"></p>
+            <p class="meta"><span id="platform"></span> &middot; <span id="duration"></span> &middot; <span id="quality"></span></p>
+          </div>
+        </div>
+
+        <section id="chooser" class="chooser hidden">
+          <div class="chooser-tabs" role="tablist">
+            <button id="tab-quick" type="button" class="tab-btn active" role="tab" aria-selected="true">What do you need?</button>
+            <button id="tab-custom" type="button" class="tab-btn" role="tab" aria-selected="false">Custom options</button>
+          </div>
+
+          <div class="tab-content">
+            <div id="quick-pane" class="tab-pane">
+              <div id="preset-list" class="preset-list"></div>
+              <p id="preset-warning" class="warning hidden"></p>
+            </div>
+
+            <div id="custom-panel" class="tab-pane custom hidden">
+              <label>What do you need
+                <select id="c-content"></select>
               </label>
-              <label class="field">End
-                <input id="s-end" type="text" placeholder="1:45" autocomplete="off" spellcheck="false">
+              <label id="c-quality-row">Quality
+                <select id="c-quality"></select>
               </label>
-              <label class="field extra">Extra seconds each side
-                <input id="s-extra" type="number" min="0" step="0.5" value="2">
+              <p id="c-result" class="hint wide hidden"></p>
+              <label id="c-format-row">Format
+                <select id="c-format"></select>
               </label>
+              <label id="c-audio-row" class="hidden">Audio type
+                <select id="c-audio"></select>
+              </label>
+              <p id="c-warning" class="warning wide hidden"></p>
             </div>
           </div>
-          <p id="section-hint" class="hint hidden">Write times like 1:20, 1:02:30 or 80 (seconds). <span id="s-length"></span></p>
-        </fieldset>
 
-        <p id="mode-note" class="mode-note"></p>
-        <button id="download" type="button">Download</button>
+          <fieldset id="timeline" class="timeline">
+            <legend>How much of the video?</legend>
+            <div class="timeline-row">
+              <label class="choice"><input type="radio" name="range" value="full" checked> Full video</label>
+              <label class="choice"><input type="radio" name="range" value="section"> Only a section</label>
+              <div id="section-fields" class="section-fields hidden">
+                <label class="field">Start
+                  <input id="s-start" type="text" placeholder="0:00" autocomplete="off" spellcheck="false">
+                </label>
+                <label class="field">End
+                  <input id="s-end" type="text" placeholder="1:45" autocomplete="off" spellcheck="false">
+                </label>
+                <label class="field extra">Extra seconds each side
+                  <input id="s-extra" type="number" min="0" step="0.5" value="2">
+                </label>
+              </div>
+            </div>
+            <p id="section-hint" class="hint hidden">Write times like 1:20, 1:02:30 or 80 (seconds). <span id="s-length"></span></p>
+          </fieldset>
+
+          <p id="mode-note" class="mode-note"></p>
+          <button id="download" type="button">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M4.5 18.5h15"></path></svg>
+            Download
+          </button>
+        </section>
+
+        <div class="feature-grid">
+          <div class="feature">
+            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"></path></svg>
+            <div class="feature-title">Fast &amp; Simple</div>
+            <div class="feature-sub">Get your videos quickly</div>
+          </div>
+          <div class="feature">
+            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v6c0 5 3.5 7.5 7.5 9 4-1.5 7.5-4 7.5-9V6z"></path></svg>
+            <div class="feature-title">Privacy First</div>
+            <div class="feature-sub">Your data stays on your device</div>
+          </div>
+          <div class="feature">
+            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            <div class="feature-title">Works Offline</div>
+            <div class="feature-sub">No cloud, no tracking</div>
+          </div>
+        </div>
+
+        <p class="note">Only download footage you have the right to use. This is a private tool that runs on your own computer.</p>
       </section>
-
-      <p class="note">Only download footage you have the right to use. This is a private tool that runs on your own computer.</p>
     </main>
 
     <aside id="queue-sidebar" class="side-panel">
       <section id="queue" class="queue">
         <div class="queue-head">
-          <h3>Downloads</h3>
-          <button id="queue-clear-history" type="button" class="link-button hidden">Clear history</button>
+          <div class="queue-head-title">
+            <span class="queue-head-icon">
+              <svg class="icon small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M4.5 18.5h15"></path></svg>
+            </span>
+            <h3>Downloads</h3>
+          </div>
+          <button id="queue-clear-history" type="button" class="link-button hidden">
+            <svg class="icon small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14"></path><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path><path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"></path></svg>
+            Clear history
+          </button>
         </div>
         <div class="queue-tabs" role="tablist">
-          <button id="queue-tab-active" type="button" class="tab-btn active" role="tab" aria-selected="true">In progress</button>
-          <button id="queue-tab-completed" type="button" class="tab-btn" role="tab" aria-selected="false">Completed</button>
+          <button id="queue-tab-active" type="button" class="tab-btn active" role="tab" aria-selected="true">In progress <span id="queue-badge-active" class="qbadge hidden">0</span></button>
+          <button id="queue-tab-completed" type="button" class="tab-btn" role="tab" aria-selected="false">Completed <span id="queue-badge-completed" class="qbadge hidden">0</span></button>
         </div>
         <p id="queue-notice" class="queue-notice hidden"></p>
 
         <div id="queue-active-pane" class="queue-pane">
-          <p id="queue-active-empty" class="queue-empty hidden">Nothing downloading right now.</p>
+          <div id="queue-active-empty" class="queue-empty hidden">
+            <svg class="queue-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"></rect><line x1="8" y1="4.5" x2="8" y2="19.5"></line><line x1="16" y1="4.5" x2="16" y2="19.5"></line></svg>
+            <p class="queue-empty-title">Nothing downloading right now</p>
+            <p class="queue-empty-sub">Check a link above and press Download to see it here.</p>
+          </div>
           <ul id="queue-active-list" class="queue-list"></ul>
         </div>
 
@@ -138,7 +204,11 @@
               </select>
             </label>
           </div>
-          <p id="queue-completed-empty" class="queue-empty hidden">Nothing downloaded yet.</p>
+          <div id="queue-completed-empty" class="queue-empty hidden">
+            <svg class="queue-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l3.5 3.5v13a1 1 0 0 1-1 1h-9.5a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z"></path><path d="M14 3.5V7h3.5"></path><line x1="9" y1="12.5" x2="15" y2="12.5"></line><line x1="9" y1="16" x2="15" y2="16"></line></svg>
+            <p class="queue-empty-title">Nothing downloaded yet</p>
+            <p class="queue-empty-sub">Your finished downloads will show up here.</p>
+          </div>
           <ul id="queue-completed-list" class="queue-list"></ul>
           <button id="queue-load-older" type="button" class="secondary wide hidden">Load older</button>
         </div>
@@ -153,29 +223,52 @@
       <h3>Settings</h3>
       <button id="settings-close" type="button" class="drawer-close" aria-label="Close settings">&times;</button>
     </div>
+    <p class="panel-intro">These apply to every download unless you change something for a
+      particular video first.</p>
+
     <label>Save videos in
       <div class="folder-row">
         <input id="st-folder" type="text" autocomplete="off" spellcheck="false">
-        <button id="st-browse" type="button" class="secondary">Browse...</button>
+        <button id="st-browse" type="button" class="secondary">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1H10l2 2h7.5a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"></path></svg>
+          Browse...
+        </button>
       </div>
     </label>
+    <p class="field-hint">Finished files are organized here automatically into
+      Platform \ Date \ Title folders, so you never have to sort them yourself.</p>
+
     <label>Default preset
       <select id="st-default-preset"></select>
     </label>
+    <p class="field-hint">Picked automatically on every new video you check. You can still switch
+      to a different option before pressing Download.</p>
+
     <label>Extra seconds on each side of a section (default)
       <input id="st-extra" type="number" min="0" step="0.5">
     </label>
+    <p class="field-hint">A small safety margin added around the start/end times you pick, so a
+      section download doesn't cut off right at your intended first or last frame.</p>
+
     <label>Downloads at once
       <input id="st-parallel" type="number" min="1" max="4" step="1">
     </label>
+    <p class="field-hint">How many videos can download at the same time. Higher can be faster,
+      but uses more of your internet connection and computer at once.</p>
+
     <div id="st-cookies-section">
       <label>Sign in for restricted videos (age-restricted, members-only, private)
         <div class="folder-row">
           <input id="st-cookies-file" type="text" autocomplete="off" spellcheck="false"
                  placeholder="e.g. C:\Users\you\Downloads\youtube.com_cookies.txt">
-          <button id="st-cookies-browse" type="button" class="secondary">Browse...</button>
+          <button id="st-cookies-browse" type="button" class="secondary">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l3.5 3.5v13a1 1 0 0 1-1 1h-9.5a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z"></path><path d="M14 3.5V7h3.5"></path><line x1="9" y1="12.5" x2="15" y2="12.5"></line><line x1="9" y1="16" x2="15" y2="16"></line></svg>
+            Browse...
+          </button>
         </div>
       </label>
+      <p class="field-hint">Only needed for videos that require being signed in. Leave this empty
+        for ordinary public videos - most videos don't need it.</p>
       <button id="cookies-help-toggle" type="button" class="link-button">How do I get this file?</button>
       <div id="cookies-help" class="hint-box hidden">
         <ol>
@@ -199,12 +292,19 @@
     </div>
     <hr>
     <div class="panel-actions">
-      <button id="st-check-update" type="button" class="secondary">Check for engine update</button>
-      <button id="st-update-now" type="button" class="hidden">Update now</button>
+      <button id="st-check-update" type="button" class="secondary">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 5.5A8 8 0 1 0 20.5 12"></path><path d="M20.5 4.5v4.5H16"></path></svg>
+        Check for engine update
+      </button>
+      <button id="st-update-now" type="button" class="hidden">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M4.5 18.5h15"></path></svg>
+        Update now
+      </button>
       <p id="st-update-message" class="panel-message hidden"></p>
     </div>
   </section>
 
+  <script src="icons.js"></script>
   <script src="custom.js"></script>
   <script src="section.js"></script>
   <script src="queue.js"></script>

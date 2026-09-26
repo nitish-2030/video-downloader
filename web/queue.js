@@ -11,6 +11,8 @@ const queueView = (() => {
   const completedPane = document.getElementById("queue-completed-pane");
   const tabActive = document.getElementById("queue-tab-active");
   const tabCompleted = document.getElementById("queue-tab-completed");
+  const badgeActive = document.getElementById("queue-badge-active");
+  const badgeCompleted = document.getElementById("queue-badge-completed");
   const activeEmpty = document.getElementById("queue-active-empty");
   const completedEmpty = document.getElementById("queue-completed-empty");
   const clearHistoryButton = document.getElementById("queue-clear-history");
@@ -36,6 +38,7 @@ const queueView = (() => {
   const previousStatus = new Map(); // job id -> status, so a "-> done" transition can be noticed
   let historyItems = [];           // history entries loaded so far (may be a prefix of the total)
   let historyTotal = 0;
+  let completedCount = 0;          // the merged (history + still-live "done" jobs) count actually shown
   let filterType = "all";
   let filterRange = "all";
 
@@ -169,7 +172,19 @@ const queueView = (() => {
   // cramped when there were many completed downloads below it).
 
   function updateClearHistoryVisibility() {
-    setShown(clearHistoryButton, currentTab === "completed" && historyItems.length > 0);
+    setShown(clearHistoryButton, currentTab === "completed" && completedCount > 0);
+  }
+
+  // Keeps the number badges on the two tabs in sync. The "In progress" badge also pulses gently
+  // while there's at least one active job, as a minimal cue that something is downloading - it
+  // stops (and the badge disappears) the moment nothing is left in progress.
+  function updateBadges(activeCount, doneCount) {
+    badgeActive.textContent = String(activeCount);
+    setShown(badgeActive, activeCount > 0);
+    badgeActive.classList.toggle("pulsing", activeCount > 0);
+
+    badgeCompleted.textContent = String(doneCount);
+    show(badgeCompleted);
   }
 
   function setTab(tab) {
@@ -196,9 +211,9 @@ const queueView = (() => {
       <div class="qtop">
         <div class="qtitle"></div>
         <div class="qbuttons">
-          <button type="button" class="small secondary q-cancel">Cancel</button>
-          <button type="button" class="small q-retry">Retry</button>
-          <button type="button" class="small secondary q-dismiss">Dismiss</button>
+          <button type="button" class="small secondary q-cancel">${Icons.svg("x", "small")} Cancel</button>
+          <button type="button" class="small q-retry">${Icons.svg("refresh", "small")} Retry</button>
+          <button type="button" class="small secondary q-dismiss">${Icons.svg("trash", "small")} Dismiss</button>
         </div>
       </div>
       <div class="qmeta"></div>
@@ -206,7 +221,7 @@ const queueView = (() => {
       <div class="bar"><div class="bar-fill"></div></div>
       <span class="spinner hidden" aria-hidden="true"></span>
       <div class="qerror hidden">
-        <button type="button" class="small secondary q-action hidden">Open Settings</button>
+        <button type="button" class="small secondary q-action hidden">${Icons.svg("gear", "small")} Open Settings</button>
         <button type="button" class="link-button q-toggle hidden">Show details</button>
         <pre class="qdetails hidden"></pre>
       </div>`;
@@ -285,7 +300,7 @@ const queueView = (() => {
       <div class="qstatus">Finished</div>
       <div class="qdone">
         <div class="qdone-text"></div>
-        <button type="button" class="small secondary q-open-folder hidden">Open folder</button>
+        <button type="button" class="small secondary q-open-folder hidden">${Icons.svg("folder", "small")} Open folder</button>
         <span class="q-gone hidden">File no longer there</span>
       </div>`;
     const find = (selector) => row.querySelector(selector);
@@ -410,6 +425,7 @@ const queueView = (() => {
       if (!doneObservedAt.has(job.id)) { doneObservedAt.set(job.id, Date.now()); }
     }
     const completed = mergeCompleted(doneJobs, historyItems);
+    completedCount = completed.length;
 
     // ---- active section ----
     // "Ahead in queue" reflects processing order (queue insertion order), not display order.
@@ -450,6 +466,7 @@ const queueView = (() => {
     setShown(completedEmpty, completed.length === 0);
     updateClearHistoryVisibility();
     setShown(loadOlderButton, historyItems.length < historyTotal);
+    updateBadges(activeOrder.length, completedCount);
     applyFilters();
   }
 
@@ -528,13 +545,25 @@ const queueView = (() => {
   }
 
   clearHistoryButton.addEventListener("click", async () => {
+    const count = completedCount;
+    const what = count === 1 ? "1 download" : `all ${count} downloads`;
+    const sure = window.confirm(
+      `Clear your Completed list (${what})? This only clears the list - it will not delete ` +
+      `any of the files you've already downloaded.`
+    );
+    if (!sure) { return; }
     clearHistoryButton.disabled = true;
     try {
       const response = await fetch("/api/history", { method: "DELETE" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       historyItems = [];
       historyTotal = 0;
-      render();
+      // A download finished this session is still sitting in the live queue as a "done" job -
+      // clearing history alone doesn't touch that, so it would keep reappearing here. Remove
+      // each one individually (this never touches active or canceled jobs on the other tab).
+      const doneIds = latestJobs.filter((job) => job.status === "done").map((job) => job.id);
+      await Promise.all(doneIds.map((id) => fetch(`/api/jobs/${id}`, { method: "DELETE" }).catch(() => {})));
+      await refreshJobs();
     } catch (error) {
       onError("I couldn't reach the tool. Is it still running?", String(error));
     } finally {
