@@ -39,7 +39,7 @@ format/codec settings.
 ## Setup
 
 ```bash
-git clone https://github.com/<your-username>/video-downloader.git
+git clone https://github.com/nitish-2030/video-downloader.git
 cd video-downloader
 pip install -r requirements.txt
 ```
@@ -55,13 +55,19 @@ Nothing here is exposed to the internet — it only listens on your own machine.
 
 ## Running the tests
 
-Each module has a matching `test_*.py` that runs offline (no real network calls to YouTube/X):
+Run the offline unit tests (no internet needed) from the repo root with:
 
 ```bash
-python test_engine.py
-python test_queue.py
-# ...etc, or run everything with pytest:
 pytest
+```
+
+A few files in `tests/` are manual, throwaway scripts instead of pytest tests — they need a
+real link, arguments, or a live network connection, so `pytest` skips them automatically. Run
+them by hand when you want to sanity-check against a real video, for example:
+
+```bash
+python tests/test_download.py <url> premiere
+python tests/test_queue.py
 ```
 
 ## Project structure
