@@ -11,6 +11,10 @@ const historyView = (() => {
 
   const setShown = (element, visible) => element.classList.toggle("hidden", !visible);
 
+  // Friendly display name for each platform id the backend can return. Falls back to "YouTube"
+  // only for legacy/unknown values so old behavior doesn't silently change.
+  const PLATFORM_LABELS = { youtube: "YouTube", x: "X", instagram: "Instagram" };
+
   function formatWhen(isoText) {
     const date = new Date(isoText);
     if (Number.isNaN(date.getTime())) { return ""; }
@@ -36,7 +40,7 @@ const historyView = (() => {
 
     const meta = document.createElement("div");
     meta.className = "hmeta";
-    const platform = entry.platform === "x" ? "X" : "YouTube";
+    const platform = PLATFORM_LABELS[entry.platform] || "YouTube";
     meta.textContent = `${platform} · ${entry.preset} · ${formatWhen(entry.finished_at)}`;
 
     const bottom = document.createElement("div");

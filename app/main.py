@@ -296,7 +296,7 @@ def download(request: DownloadRequest):
     if detect_platform(url) is None:
         raise HTTPException(
             status_code=400,
-            detail={"friendly": "This link isn't supported. Please use a YouTube or X link.",
+            detail={"friendly": "This link isn't supported. Please use a YouTube, X, or Instagram link.",
                     "details": ""},
         )
     if request.custom is not None:

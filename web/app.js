@@ -26,6 +26,10 @@ let supportedLinks = [];    // in batch mode: the links that will be downloaded
 let standardQualities = []; // the usual quality steps, for the Custom box in batch mode (no video was checked)
 let checkedUrl = null;      // the link that was checked (what Download will use)
 
+// Friendly display name for each platform id the backend can return. Falls back to "YouTube"
+// only for legacy/unknown values so old behavior doesn't silently change.
+const PLATFORM_LABELS = { youtube: "YouTube", x: "X", instagram: "Instagram" };
+
 function show(element) { element.classList.remove("hidden"); }
 function setShown(element, visible) { element.classList.toggle("hidden", !visible); }
 function hide(element) { element.classList.add("hidden"); }
@@ -65,7 +69,7 @@ function showCard(data) {
   }
   document.getElementById("title").textContent = data.title;
   document.getElementById("uploader").textContent = data.uploader;
-  document.getElementById("platform").textContent = data.platform === "x" ? "X" : "YouTube";
+  document.getElementById("platform").textContent = PLATFORM_LABELS[data.platform] || "YouTube";
   document.getElementById("duration").textContent = data.is_live ? "Live" : formatDuration(data.duration);
   document.getElementById("quality").textContent = data.best_quality;
 
@@ -78,7 +82,8 @@ function showCard(data) {
 // ---------- Many links at once ----------
 
 const SUPPORTED_HOSTS = ["youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be",
-                         "x.com", "twitter.com", "mobile.twitter.com", "mobile.x.com"];
+                         "x.com", "twitter.com", "mobile.twitter.com", "mobile.x.com",
+                         "instagram.com"];
 
 function isSupportedLink(text) {
   try {
@@ -125,7 +130,7 @@ function renderBatch(parsed) {
     if (!good) {
       const why = document.createElement("span");
       why.className = "why";
-      why.textContent = "only YouTube and X links";
+      why.textContent = "only YouTube, X and Instagram links";
       item.appendChild(why);
     }
     batchList.appendChild(item);

@@ -70,6 +70,8 @@ SIGNIN_ERROR_KEYS = (
     "sign in to confirm your age", "age-restricted", "age restricted",
     "private video",
     "members-only", "members only", "music premium members",
+    "login required", "log in to continue viewing", "restricted video",
+    "only available for registered users", "who follow this account",
 )
 
 
@@ -129,9 +131,13 @@ def _classify_download_error(message):
         (("sign in to confirm your age", "age-restricted", "age restricted"),
          "This video is age-restricted."),
         (("private video",),
-         "This video is private."),
+         "This post is private."),
         (("members-only", "members only", "music premium members"),
          "This video is for members only."),
+        (("login required", "log in to continue viewing", "restricted video"),
+         "This post needs you to be signed in to view it."),
+        (("only available for registered users", "who follow this account"),
+         "This is a private Instagram account — only its followers can see this post."),
     ]
     for keys, what in signin_checks:
         if any(key in text for key in keys):
@@ -152,8 +158,9 @@ def _classify_download_error(message):
          "Couldn't find a downloadable version of this video at that quality."),
         (("copyright",),
          "This video was blocked due to a copyright claim."),
-        (("429", "too many requests"),
-         "Too many requests right now. Wait a bit and try again."),
+        (("429", "too many requests", "rate-limit", "rate limit", "please wait a few minutes"),
+         "The site is rate-limiting requests right now (this can happen after several downloads "
+         "in a row). Wait a few minutes and try again."),
         (("timed out", "timeout"),
          "The connection timed out. Check your internet and try again."),
         (("failed to establish a new connection", "name or service not known", "getaddrinfo failed",
@@ -177,7 +184,7 @@ def _classify_download_error(message):
 
 
 def detect_platform(url):
-    """Returns 'youtube', 'x', or None if the link is not supported."""
+    """Returns 'youtube', 'x', 'instagram', or None if the link is not supported."""
     url = url.strip()
     if "://" not in url:
         url = "https://" + url
@@ -188,6 +195,8 @@ def detect_platform(url):
         return "youtube"
     if host in ("x.com", "twitter.com", "mobile.twitter.com", "mobile.x.com"):
         return "x"
+    if host in ("instagram.com",):
+        return "instagram"
     return None
 
 
@@ -257,7 +266,7 @@ def get_info(url):
     url = url.strip()
     platform = detect_platform(url)
     if platform is None:
-        raise EngineError("This link isn't supported. Please use a YouTube or X link.")
+        raise EngineError("This link isn't supported. Please use a YouTube, X, or Instagram link.")
 
     options = {
         "quiet": True,
@@ -412,7 +421,7 @@ def download(url, preset_id, output_dir, on_progress=None, section=None, cancel=
     """
     url = url.strip()
     if detect_platform(url) is None:
-        raise EngineError("This link isn't supported. Please use a YouTube or X link.")
+        raise EngineError("This link isn't supported. Please use a YouTube, X, or Instagram link.")
 
     preset = resolve_preset(preset_id)
     quality = preset.get("quality")   # short side in pixels (Custom section), None = best available

@@ -1,9 +1,9 @@
 # Video Downloader for Editors
 
-A local tool that turns a YouTube or X (Twitter) link into edit-ready footage — a Premiere-ready
-MP4, an After Effects–ready ProRes MOV, silent B-roll, audio-only, or the untouched original —
-without opening an editor's timeline with the wrong codec, frame rate, or a file full of audio
-you don't need.
+A local tool that turns a YouTube, X (Twitter), or Instagram link into edit-ready footage — a
+Premiere-ready MP4, an After Effects–ready ProRes MOV, silent B-roll, audio-only, or the
+untouched original — without opening an editor's timeline with the wrong codec, frame rate, or
+a file full of audio you don't need.
 
 It runs entirely on your own machine. Nothing is uploaded anywhere; there's no account, no cloud
 step, no third-party server in the loop besides the site you're downloading from.
@@ -28,7 +28,7 @@ format/codec settings.
   small sidecar file recording the source link, uploader, and download settings for each file.
 - **History** — a running log of what's been downloaded, so you don't have to go re-find a link.
 - **Sign-in support** — a `cookies.txt` file lets you fetch age-restricted, private, or
-  members-only videos you have access to.
+  members-only YouTube videos, and private/follow-only Instagram posts, that you have access to.
 
 ## Requirements
 
@@ -88,6 +88,7 @@ docs/           Design notes and build log
 | Queue, batch downloads, cancel/retry | Done |
 | Output organization, history, settings | Done |
 | Error handling, sign-in via cookies, auto-update | Done |
+| Instagram support | Done |
 | Full real-world testing (large/4K files, long sections) | Done |
 | UI/UX redesign | In progress |
 | Packaging as a standalone Windows app | Planned |

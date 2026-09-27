@@ -95,7 +95,7 @@ def run_preset(url, preset_id, output_dir, on_progress=None, section=None, cance
 
 def _source_text(info, url, preset, organize, final):
     """The words in the source-info file that sits next to the finished file."""
-    platform = {"youtube": "YouTube", "x": "X"}.get(info.get("platform"), "")
+    platform = {"youtube": "YouTube", "x": "X", "instagram": "Instagram"}.get(info.get("platform"), "")
     lines = [
         "Downloaded with Video Downloader",
         "",

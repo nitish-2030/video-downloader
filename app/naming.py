@@ -11,7 +11,7 @@ import threading
 import unicodedata
 from datetime import date
 
-PLATFORM_FOLDERS = {"youtube": "YouTube", "x": "X"}
+PLATFORM_FOLDERS = {"youtube": "YouTube", "x": "X", "instagram": "Instagram"}
 
 MAX_TITLE_LENGTH = 80        # characters of the title inside the file name
 FULL_PATH_LIMIT = 255        # Windows stops at 260; we keep a few characters spare
@@ -70,12 +70,12 @@ def clean_title(text, max_length=MAX_TITLE_LENGTH):
 def display_title(platform, title, uploader):
     """The title we actually name the file with.
 
-    X posts have no real title (it is the post's text), so the poster's name goes in front:
-    'PrettyCitiesX - beautiful city'. YouTube titles are used as they are.
+    X posts and Instagram reels/posts often have no real title (it is the post's caption), so the
+    poster's name goes in front: 'PrettyCitiesX - beautiful city'. YouTube titles are used as they are.
     """
     title = str(title or "").strip()
     uploader = str(uploader or "").strip()
-    if platform != "x" or not uploader:
+    if platform not in ("x", "instagram") or not uploader:
         return title
     plain = _LINK.sub("", title).strip()
     if plain.lower().startswith(uploader.lower()):
